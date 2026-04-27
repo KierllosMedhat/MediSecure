@@ -1,0 +1,9 @@
+/* Patient pages shared styles — Owner: Abanob */
+
+.page-header { margin-bottom: var(--space-6); }
+.page-title { font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); color: var(--color-text-primary); }
+.page-subtitle { font-size: var(--font-size-sm); color: var(--color-text-muted); margin-top: var(--space-1); }
+
+/* TODO: Add dashboard stat cards grid styles */
+/* TODO: Add activity list styles */
+/* TODO: Add profile form grid styles */
