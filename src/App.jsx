@@ -51,7 +51,7 @@ function App() {
   return (
     <Routes>
       {/* ========== Public / Auth Routes ========== */}
-      <Route path="/patients/:id/consents" element={<ConsentManagement />} />
+
       <Route element={<PublicRoute />}>
         <Route element={<AuthLayout />}>
           <Route path="/auth/login" element={<LoginPage />} />
@@ -79,6 +79,10 @@ function App() {
           <Route path="/records/upload" element={<UploadRecord />} />
 
           {/* Consent (Abdullah) */}
+          <Route
+            path="/patients/:id/consents"
+            element={<ConsentManagement />}
+          />
 
           {/* Payments (Abdullah) */}
           <Route path="/payments" element={<PaymentsPage />} />
