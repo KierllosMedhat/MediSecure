@@ -1,43 +1,404 @@
-/**
- * Payments Page — balance, payment history, Fawry/Card payment flows.
- * Owner: Abdullah
- *
- * ERD refs:
- *   Payment → Payment_Id, Patient_Id (FK), Amount, Currency,
- *             Payment_Type, Gateway_Type, Status, Paid_at, Receipt_URL,
- *             created_at, deleted_at
- *   Gateway_Type: FAWRY | INTERNATIONAL (Visa/Mastercard)
- *   Status: PENDING → COMPLETED | FAILED
- *
- * TODO:
- * - Fetch paymentApi.getOutstandingBalance() and paymentApi.getPaymentHistory()
- * - Balance card: show Amount + Currency, "Pay with Fawry" / "Pay with Card" buttons
- * - Fawry modal: fawry_code, amount, currency, payment_type
- *     → paymentApi.payWithFawry(payload) — Gateway_Type=FAWRY
- * - Card modal: card_token, cvv, amount, currency, payment_type
- *     → paymentApi.payWithCard(payload) — Gateway_Type=INTERNATIONAL
- * - Payment history DataTable columns: Amount, Currency, Payment_Type,
- *   Gateway_Type (StatusBadge), created_at, Status (StatusBadge), Paid_at, actions
- * - Status flow: PENDING → COMPLETED (show Receipt) | FAILED (show Retry)
- * - Receipt button → /payments/receipt/:paymentId (uses Receipt_URL)
- * - "Pending Bills" widget with overdue highlighting
- */
-import { Card, Button, DataTable, StatusBadge, Modal, Input } from '../../../components/ui';
-import './PaymentPages.css';
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  Card,
+  Button,
+  StatusBadge,
+  Modal,
+  Input,
+} from "../../../components/ui";
+import "./PaymentPages.css";
+
+// 1. Mock API Data
+const mockPaymentApi = {
+  getOutstandingBalance: async () => ({ amount: 430.0, currency: "EGP" }),
+  getPendingBills: async () => [
+    {
+      id: 1,
+      description: "Consultation Fee - Dr. Sarah",
+      amount: 150,
+      dueDate: "2026-04-20",
+      status: "pending",
+    },
+    {
+      id: 2,
+      description: "Lab Tests - Blood Panel",
+      amount: 280,
+      dueDate: "2026-04-18",
+      status: "overdue",
+    },
+  ],
+  getPaymentHistory: async () => [
+    {
+      Payment_Id: "pay-101",
+      Amount: 150,
+      Currency: "EGP",
+      Payment_Type: "CONSULTATION",
+      Gateway_Type: "INTERNATIONAL",
+      Status: "COMPLETED",
+      created_at: "2026-04-10",
+      Paid_at: "2026-04-10",
+    },
+    {
+      Payment_Id: "pay-102",
+      Amount: 280,
+      Currency: "EGP",
+      Payment_Type: "LAB_RESULT",
+      Gateway_Type: "FAWRY",
+      Status: "FAILED",
+      created_at: "2026-04-15",
+      Paid_at: null,
+    },
+  ],
+};
 
 export default function PaymentsPage() {
+  const navigate = useNavigate();
+
+  // --- States ---
+  const [balance, setBalance] = useState({ amount: 0, currency: "EGP" });
+  const [pendingBills, setPendingBills] = useState([]);
+  const [history, setHistory] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Modal States
+  const [isFawryModalOpen, setFawryModalOpen] = useState(false);
+  const [isCardModalOpen, setCardModalOpen] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  // Form Payloads
+  const [fawryPayload, setFawryPayload] = useState({
+    fawry_code: "",
+    amount: "",
+    currency: "EGP",
+    payment_type: "CONSULTATION",
+  });
+  const [cardPayload, setCardPayload] = useState({
+    card_token: "",
+    cvv: "",
+    amount: "",
+    currency: "EGP",
+    payment_type: "CONSULTATION",
+  });
+
+  // --- Fetch Data ---
+  useEffect(() => {
+    const loadData = async () => {
+      setIsLoading(true);
+      try {
+        const [bal, bills, hist] = await Promise.all([
+          mockPaymentApi.getOutstandingBalance(),
+          mockPaymentApi.getPendingBills(),
+          mockPaymentApi.getPaymentHistory(),
+        ]);
+        setBalance(bal);
+        setPendingBills(bills);
+        setHistory(hist);
+        console.log("Payment History Data:", hist);
+      } catch (error) {
+        console.error("Error fetching payment data:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadData();
+  }, []);
+
+  // --- Handlers ---
+  const handleFawrySubmit = (e) => {
+    e.preventDefault();
+    setIsProcessing(true);
+    setTimeout(() => {
+      setIsProcessing(false);
+      setFawryModalOpen(false);
+      alert("Fawry code generated! Status: PENDING");
+    }, 1500);
+  };
+
+  const handleCardSubmit = (e) => {
+    e.preventDefault();
+    setIsProcessing(true);
+    setTimeout(() => {
+      setIsProcessing(false);
+      setCardModalOpen(false);
+      navigate("/payments/receipt/new-pay-123");
+    }, 1500);
+  };
+
+  if (isLoading)
+    return (
+      <div className="payments-page payments-container">
+        <p>Loading payment details...</p>
+      </div>
+    );
+
   return (
-    <div className="payments-page">
-      <div className="page-header">
-        <h1 className="page-title">Payments</h1>
-        <p className="page-subtitle">Manage your billing and payments.</p>
+    <div className="payments-page payments-container">
+      <div className="page-header" style={{ marginBottom: "2rem" }}>
+        <h1
+          className="page-title"
+          style={{ fontSize: "2rem", color: "#333", margin: 0 }}
+        >
+          Payments
+        </h1>
+        <p
+          className="page-subtitle"
+          style={{ color: "#666", marginTop: "5px" }}
+        >
+          Manage your billing and payments securely.
+        </p>
       </div>
 
-      {/* TODO: Balance card (Amount, Currency) with pay buttons */}
-      {/* TODO: Pending bills widget with overdue highlighting */}
-      {/* TODO: Payment history DataTable */}
-      {/* TODO: Fawry payment modal (Gateway_Type=FAWRY) */}
-      {/* TODO: Card payment modal (Gateway_Type=INTERNATIONAL) */}
+      <div
+        className="payments-grid"
+        style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2rem" }}
+      >
+        {/* العمود الأول: الرصيد والفواتير */}
+        <div>
+          {/* Balance card */}
+          <Card className="balance-card">
+            <h3 className="balance-label">Outstanding Balance</h3>
+            <h2 className="balance-amount">
+              {balance.amount.toFixed(2)} {balance.currency}
+            </h2>
+
+            <div style={{ display: "flex", gap: "10px", marginTop: "1.5rem" }}>
+              <Button
+                onClick={() => setCardModalOpen(true)}
+                variant="primary"
+                style={{ flex: 1 }}
+              >
+                Pay with Card
+              </Button>
+              <Button
+                onClick={() => setFawryModalOpen(true)}
+                variant="secondary"
+                style={{ flex: 1 }}
+              >
+                Pay with Fawry
+              </Button>
+            </div>
+          </Card>
+
+          {/* Pending bills widget */}
+          <section className="bills-section">
+            <h3 className="section-title">Pending Bills</h3>
+            <div className="bills-list">
+              {pendingBills.map((bill) => (
+                <div
+                  key={bill.id}
+                  className={`bill-item ${bill.status === "overdue" ? "overdue" : ""}`}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "4px",
+                    }}
+                  >
+                    <strong style={{ color: "#333" }}>
+                      {bill.description}
+                    </strong>
+                    <span style={{ fontSize: "0.85rem", color: "#666" }}>
+                      Due: {bill.dueDate}
+                    </span>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <strong
+                      style={{
+                        display: "block",
+                        color: bill.status === "overdue" ? "#dc3545" : "#333",
+                      }}
+                    >
+                      {bill.amount.toFixed(2)} {balance.currency}
+                    </strong>
+                    {bill.status === "overdue" && (
+                      <span className="overdue-badge">OVERDUE</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+
+        {/* العمود الثاني: Payment History */}
+        <div
+          style={{
+            backgroundColor: "#fff",
+            padding: "1.5rem",
+            borderRadius: "8px",
+            border: "1px solid #dee2e6",
+            minHeight: "350px",
+          }}
+        >
+          <h3 className="section-title">Payment History</h3>
+
+          <div style={{ overflowX: "auto" }}>
+            <table
+              style={{
+                width: "100%",
+                textAlign: "left",
+                borderCollapse: "collapse",
+              }}
+            >
+              <thead>
+                <tr style={{ borderBottom: "2px solid #eee", color: "#666" }}>
+                  <th style={{ padding: "12px" }}>Amount</th>
+                  <th style={{ padding: "12px" }}>Gateway</th>
+                  <th style={{ padding: "12px" }}>Status</th>
+                  <th style={{ padding: "12px", textAlign: "right" }}>
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {history.length > 0 ? (
+                  history.map((record) => (
+                    <tr
+                      key={record.Payment_Id}
+                      style={{ borderBottom: "1px solid #eee" }}
+                    >
+                      <td
+                        style={{
+                          padding: "12px",
+                          fontWeight: "500",
+                          color: "#333",
+                        }}
+                      >
+                        {record.Amount.toFixed(2)} {record.Currency}
+                      </td>
+                      <td style={{ padding: "12px" }}>
+                        <StatusBadge status={record.Gateway_Type} />
+                      </td>
+                      <td style={{ padding: "12px" }}>
+                        <StatusBadge status={record.Status} />
+                      </td>
+                      <td style={{ padding: "12px", textAlign: "right" }}>
+                        {record.Status === "COMPLETED" ? (
+                          <Button
+                            size="small"
+                            onClick={() =>
+                              navigate(`/payments/receipt/${record.Payment_Id}`)
+                            }
+                          >
+                            Receipt
+                          </Button>
+                        ) : (
+                          <Button size="small" variant="danger">
+                            Retry
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td
+                      colSpan="4"
+                      style={{
+                        textAlign: "center",
+                        padding: "2rem",
+                        color: "#999",
+                      }}
+                    >
+                      Loading transactions...
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {/* --- Fawry Modal --- */}
+      {isFawryModalOpen && (
+        <Modal
+          isOpen={isFawryModalOpen}
+          onClose={() => setFawryModalOpen(false)}
+          title="Pay with Fawry"
+        >
+          <form onSubmit={handleFawrySubmit} className="payment-form">
+            <Input
+              label="Amount"
+              type="number"
+              value={fawryPayload.amount || balance.amount}
+              onChange={(e) =>
+                setFawryPayload({ ...fawryPayload, amount: e.target.value })
+              }
+              required
+            />
+            <Input
+              label="Payment Type"
+              type="text"
+              value={fawryPayload.payment_type}
+              disabled
+            />
+            <Button
+              type="submit"
+              disabled={isProcessing}
+              style={{ width: "100%", marginTop: "10px" }}
+            >
+              {isProcessing ? "Generating Code..." : "Generate Fawry Code"}
+            </Button>
+          </form>
+        </Modal>
+      )}
+
+      {/* --- Card Modal --- */}
+      {isCardModalOpen && (
+        <Modal
+          isOpen={isCardModalOpen}
+          onClose={() => setCardModalOpen(false)}
+          title="Secure Card Payment"
+        >
+          <form onSubmit={handleCardSubmit} className="payment-form">
+            <Input
+              label="Amount to Pay"
+              type="number"
+              value={cardPayload.amount || balance.amount}
+              disabled
+            />
+            <Input
+              label="Card Token / Number"
+              type="text"
+              placeholder="**** **** **** ****"
+              value={cardPayload.card_token}
+              onChange={(e) =>
+                setCardPayload({ ...cardPayload, card_token: e.target.value })
+              }
+              required
+            />
+            <div style={{ display: "flex", gap: "10px" }}>
+              <div style={{ flex: 1 }}>
+                <Input label="Expiry Date" placeholder="MM/YY" required />
+              </div>
+              <div style={{ flex: 1 }}>
+                <Input
+                  label="CVV"
+                  type="password"
+                  placeholder="***"
+                  value={cardPayload.cvv}
+                  onChange={(e) =>
+                    setCardPayload({ ...cardPayload, cvv: e.target.value })
+                  }
+                  required
+                />
+              </div>
+            </div>
+            <Button
+              type="submit"
+              disabled={isProcessing}
+              style={{ width: "100%", marginTop: "10px" }}
+            >
+              {isProcessing
+                ? "Processing Payment..."
+                : `Pay ${balance.amount} ${balance.currency}`}
+            </Button>
+          </form>
+        </Modal>
+      )}
     </div>
   );
 }
