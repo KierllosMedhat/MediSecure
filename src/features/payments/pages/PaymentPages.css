@@ -3,3 +3,199 @@
 /* TODO: Add pending bills widget styles (with overdue highlighting) */
 /* TODO: Add payment form modal styles */
 /* TODO: Add receipt card styles */
+/* Payment pages styles — Owner: Abdullah */
+
+/* 1. Design Tokens (CSS Custom Properties) */
+:root {
+  --payment-primary: #0056b3;
+  --payment-bg-light: #f8f9fa;
+  --payment-border: #dee2e6;
+  --payment-text-dark: #333333;
+  --payment-text-muted: #6c757d;
+  --payment-danger-bg: #fff3f4;
+  --payment-danger-border: #f5c6cb;
+  --payment-danger-text: #dc3545;
+  --payment-success-bg: #d4edda;
+  --payment-success-text: #155724;
+  --payment-radius: 8px;
+}
+
+/* --- Container Layout --- */
+.payments-container {
+  padding: 2rem;
+  max-width: 1000px;
+  margin: 0 auto;
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
+}
+
+.payments-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 2rem;
+}
+
+.payments-header h1 {
+  margin: 0;
+  color: var(--payment-text-dark);
+}
+
+.payments-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+}
+
+/* --- Balance Card --- */
+.balance-card {
+  background-color: var(--payment-bg-light);
+  padding: 1.5rem;
+  border-radius: var(--payment-radius);
+  border: 1px solid var(--payment-border);
+  margin-bottom: 2rem;
+}
+
+.balance-label {
+  margin: 0 0 0.5rem 0;
+  color: var(--payment-text-muted);
+  font-weight: bold;
+}
+
+.balance-amount {
+  margin: 0;
+  font-size: 2.5rem;
+  color: var(--payment-danger-text);
+}
+
+/* --- Pending Bills --- */
+.section-title {
+  border-bottom: 2px solid #eee;
+  padding-bottom: 0.5rem;
+  margin-bottom: 1rem;
+  color: var(--payment-text-dark);
+}
+
+.bills-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.bill-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 1rem;
+  border-radius: var(--payment-radius);
+  border: 1px solid var(--payment-border);
+  background-color: #fff;
+}
+
+.bill-item.overdue {
+  border-color: var(--payment-danger-border);
+  background-color: var(--payment-danger-bg);
+}
+
+.overdue-badge {
+  font-size: 0.75rem;
+  color: var(--payment-danger-text);
+  font-weight: bold;
+  display: block;
+}
+
+/* --- Payment Form --- */
+.payment-section {
+  background-color: #fff;
+  padding: 1.5rem;
+  border-radius: var(--payment-radius);
+  border: 1px solid var(--payment-border);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+.method-selector {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 1.5rem;
+}
+
+.method-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0.8rem;
+  background-color: var(--payment-bg-light);
+  border: 1px solid var(--payment-border);
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--payment-text-muted);
+  font-weight: bold;
+}
+
+.method-btn.active {
+  background-color: #e2eefe;
+  border-color: var(--payment-primary);
+  color: var(--payment-primary);
+}
+
+.payment-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex: 1;
+}
+
+.input-group label {
+  font-size: 0.9rem;
+  color: var(--payment-text-dark);
+  font-weight: bold;
+}
+
+.input-group input {
+  padding: 0.8rem;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 1rem;
+}
+
+.submit-btn {
+  margin-top: 10px;
+  padding: 1rem;
+  background-color: var(--payment-primary);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 1.1rem;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.alert-success {
+  background-color: var(--payment-success-bg);
+  color: var(--payment-success-text);
+  padding: 1rem;
+  border-radius: 6px;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.alert-error {
+  background-color: var(--payment-danger-bg);
+  color: var(--payment-danger-text);
+  padding: 1rem;
+  border-radius: 6px;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}

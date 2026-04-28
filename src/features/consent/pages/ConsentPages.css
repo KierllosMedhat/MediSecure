@@ -1,2 +1,56 @@
 /* Consent pages styles — Owner: Abdullah */
 /* TODO: Add consent grant form styles */
+/* Consent Management Styles - Owner: Abdullah */
+.consent-container {
+  padding: 2rem;
+  max-width: 1000px;
+  margin: 0 auto;
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
+}
+
+.consent-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 2rem;
+}
+
+.consent-header h1 {
+  margin: 0 0 5px 0;
+  color: #333;
+}
+
+.consent-header p {
+  margin: 0;
+  color: #6c757d;
+}
+
+.info-banner {
+  background-color: #e2eefe;
+  border-left: 4px solid #0056b3;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+  color: #004494;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.consent-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1.5rem;
+}
+
+.table-container {
+  background-color: #fff;
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
+  padding: 1.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+}
