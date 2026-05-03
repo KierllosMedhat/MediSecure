@@ -25,7 +25,12 @@ export default function RecordsList() {
 const [records,setRecords] = useState([]);
 const [recordType,setRecordType] = useState('all');
 const [fromDate,setFromDate] = useState('');
-setRecords(recordsApi.getRecords(patientId, { record_type, from_date }));
+const [errorMessage,setErrorMessage] = useState('');
+const retrieveRecords = async () => {
+  const response = await recordsApi.getRecords(patientId, { record_type, from_date });
+  setRecords(response.data);
+}
+
  const handleFilter = (recordType, fromDate) => {
   setRecords(recordsApi.getRecords(patientId, { record_type, from_date }));
  }
@@ -44,9 +49,19 @@ setRecords(recordsApi.getRecords(patientId, { record_type, from_date }));
         <option value="prescription">Prescription</option>
         <option value="imaging">Imaging</option>
       </select>
-      <input type="date" id="from-date" />
-      <button onClick={handleFilter}>Filter</button>
+
+      <input type="date" id="from-date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+      <button onClick={() => handleFilter(recordType, fromDate)}>Filter</button>
       {/* TODO: Add DataTable with MedicalRecord data */}
+// prepare columns
+
+const columns = {[
+  { key: 'title', label: 'Title' },
+  { key: 'record_type', label: 'Record Type' },
+  { key: 'created_by', label: 'Created By' },
+  { key: 'created_at', label: 'Created At' },
+]}
+<DataTable columns={columns} data={records} emptyMessage="No records found." onRowClick={handleRowClick} />
     </div>
   );
 }
