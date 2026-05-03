@@ -21,7 +21,14 @@ import './RecordPages.css';
 
 export default function RecordsList() {
   const { id: patientId } = useParams();
-
+  
+const [records,setRecords] = useState([]);
+const [recordType,setRecordType] = useState('all');
+const [fromDate,setFromDate] = useState('');
+setRecords(recordsApi.getRecords(patientId, { record_type, from_date }));
+ const handleFilter = (recordType, fromDate) => {
+  setRecords(recordsApi.getRecords(patientId, { record_type, from_date }));
+ }
   return (
     <div className="records-page">
       <div className="page-header">
@@ -30,6 +37,15 @@ export default function RecordsList() {
       </div>
 
       {/* TODO: Add filter bar (Record_type select, from_date picker) */}
+      <select id="record-type" value={recordType} onChange={(e) => setRecordType(e.target.value)}>
+        <option value="all">All</option>
+        <option value="diagnosis">Diagnosis</option>
+        <option value="lab_result">Lab Result</option>
+        <option value="prescription">Prescription</option>
+        <option value="imaging">Imaging</option>
+      </select>
+      <input type="date" id="from-date" />
+      <button onClick={handleFilter}>Filter</button>
       {/* TODO: Add DataTable with MedicalRecord data */}
     </div>
   );
