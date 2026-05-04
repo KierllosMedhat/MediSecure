@@ -17,23 +17,57 @@
  */
 import { useParams } from 'react-router-dom';
 import { DataTable, Button } from '../../../components/ui';
+import recordsApi from '../../../api/services/recordsService';
 import './RecordPages.css';
-
+import { useNavigate } from 'react-router-dom';
+import Button from '../../components/ui/Button/Button';
+import { useState } from 'react';
 export default function RecordsList() {
   const { id: patientId } = useParams();
+  const navigate = useNavigate();
   
 const [records,setRecords] = useState([]);
 const [recordType,setRecordType] = useState('all');
 const [fromDate,setFromDate] = useState('');
-const [errorMessage,setErrorMessage] = useState('');
-const retrieveRecords = async () => {
-  const response = await recordsApi.getRecords(patientId, { record_type, from_date });
-  setRecords(response.data);
-}
 
- const handleFilter = (recordType, fromDate) => {
-  setRecords(recordsApi.getRecords(patientId, { record_type, from_date }));
+const [emptyMessage,setEmptyMessage] = useState('No records found.');
+const retrieveRecords = async () => {
+  try{
+  const response = await recordsApi.getRecords(patientId, { recordType, fromDate });
+  setRecords(response.data);
+  } catch (error) {
+    switch(error.response.status){
+      case 403:
+        setEmptyMessage('Access denied. You do not have permission to view this resource.');
+        break;
+      case 404:
+        setEmptyMessage('The requested resource was not found.');
+        break;
+      default:
+        setEmptyMessage('An unexpected error occurred.');
+    }
+    }
+}
+//intial records set before filtration
+retrieveRecords();
+
+ const handleFilter = () => {
+  retrieveRecords();
  }
+ const handleRowClick = (record) => {
+  navigate(`/patients/${patientId}/records/${record.record_id}`);
+ }
+
+ //prepare columns
+
+ const columns = [
+  { key: 'title', label: 'Title' },
+  { key: 'record_type', label: 'Record Type' },
+  { key: 'created_by', label: 'Created By' },
+  { key: 'created_at', label: 'Created At' },
+]
+
+
   return (
     <div className="records-page">
       <div className="page-header">
@@ -51,17 +85,10 @@ const retrieveRecords = async () => {
       </select>
 
       <input type="date" id="from-date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
-      <button onClick={() => handleFilter(recordType, fromDate)}>Filter</button>
+      <Button onClick={() => handleFilter(recordType, fromDate)}>Filter</Button>
       {/* TODO: Add DataTable with MedicalRecord data */}
-// prepare columns
 
-const columns = {[
-  { key: 'title', label: 'Title' },
-  { key: 'record_type', label: 'Record Type' },
-  { key: 'created_by', label: 'Created By' },
-  { key: 'created_at', label: 'Created At' },
-]}
-<DataTable columns={columns} data={records} emptyMessage="No records found." onRowClick={handleRowClick} />
+<DataTable columns={columns} data={records} emptyMessage={emptyMessage} onRowClick={handleRowClick} />
     </div>
   );
 }
