@@ -12,7 +12,7 @@
  * - Filter bar: Record_type dropdown (DIAGNOSIS, LAB_RESULT, PRESCRIPTION, IMAGING), date picker
  * - DataTable columns: Title, Record_type (StatusBadge), Created_by (staff name), created_at
  * - On row click, navigate to /patients/:id/records/:recordId
- * - "Upload Record" button → /records/upload
+ * - "Upload Record" button → /records/upload (not implemented yet)
  * - Handle consent 403 errors gracefully
  */
 import { useParams } from 'react-router-dom';
