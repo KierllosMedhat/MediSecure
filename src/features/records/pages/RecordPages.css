@@ -4,3 +4,42 @@
 /* TODO: Add record detail styles (header, content, documents) */
 /* TODO: Add upload zone styles (drag-and-drop area) */
 /* TODO: Add consent-denied fallback styles */
+
+.record-header__top {
+     display:flex;
+      align-items:center; 
+      gap:12px; 
+      margin-left:auto;
+    }
+
+    /* RecordPages.css */
+.records-page--center {
+    min-height: calc(100vh - 120px); /* adjust if you have navbar/footer */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  
+  .error-card {
+    width: min(560px, 100%);
+    text-align: center;
+    padding: 24px;
+  }
+  
+  .error-card__title {
+    margin: 0 0 8px;
+    color: #b42318; /* error tone */
+  }
+  
+  .error-card__message {
+    margin: 0 0 16px;
+    color: #475467;
+  }
+  
+  .error-card__actions {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
