@@ -20,7 +20,7 @@ import { DataTable, Button } from '../../../components/ui';
 import recordsApi from '../../../api/services/recordsService';
 import './RecordPages.css';
 import { useNavigate } from 'react-router-dom';
-import Button from '../../components/ui/Button/Button';
+
 import { useState } from 'react';
 export default function RecordsList() {
   const { id: patientId } = useParams();
@@ -69,24 +69,41 @@ retrieveRecords();
 
 
   return (
-    <div className="records-page">
-      <div className="page-header">
-        <h1 className="page-title">Health Records</h1>
-        <p className="page-subtitle">View and manage your unified health record.</p>
-      </div>
+    <div className="records-filter-bar">
+    <div className="records-filter-field">
+      <label className="records-filter-label" htmlFor="record-type">Record Type</label>
+      
 
       {/* TODO: Add filter bar (Record_type select, from_date picker) */}
-      <select id="record-type" value={recordType} onChange={(e) => setRecordType(e.target.value)}>
-        <option value="all">All</option>
-        <option value="diagnosis">Diagnosis</option>
-        <option value="lab_result">Lab Result</option>
-        <option value="prescription">Prescription</option>
-        <option value="imaging">Imaging</option>
-      </select>
+      <select
+      id="record-type"
+      className="records-filter-select"
+      value={recordType}
+      onChange={(e) => setRecordType(e.target.value)}
+      >
+      <option value="all">All</option>
+      <option value="diagnosis">Diagnosis</option>
+      <option value="lab_result">Lab Result</option>
+      <option value="prescription">Prescription</option>
+      <option value="imaging">Imaging</option>
+    </select>
+</div>
+    
+  <div className="records-filter-field">
+    <label className="records-filter-label" htmlFor="from-date">From Date</label>
+    <input
+      type="date"
+      id="from-date"
+      className="records-filter-input"
+      value={fromDate}
+      onChange={(e) => setFromDate(e.target.value)}
+    />
+  </div>
+  <div className="records-filter-actions">
+    <Button onClick={() => handleFilter(recordType, fromDate)}>Filter</Button>
+  </div>
 
-      <input type="date" id="from-date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
-      <Button onClick={() => handleFilter(recordType, fromDate)}>Filter</Button>
-      {/* TODO: Add DataTable with MedicalRecord data */}
+{/* TODO: Add DataTable with MedicalRecord data */}
 
 <DataTable columns={columns} data={records} emptyMessage={emptyMessage} onRowClick={handleRowClick} />
     </div>
