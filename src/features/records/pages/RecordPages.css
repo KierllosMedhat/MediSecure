@@ -147,6 +147,9 @@
   gap: 10px;
   align-items: center;
 }
+.col.created-at {
+  margin-left: 12px;
+}
 
 .record-header {
   color: var(--records-muted);
@@ -166,7 +169,10 @@
   text-overflow: ellipsis;
 }
 
-.col.type,
+.col.type {
+  white-space: nowrap;
+  /* margin-left: 12px; */
+}
 .col.created-by,
 .col.created-at {
   white-space: nowrap;

@@ -16,24 +16,48 @@
  * - Handle consent 403 errors gracefully
  */
 import { useParams } from 'react-router-dom';
-import { DataTable, Button } from '../../../components/ui';
+import { DataTable, Button,StatusBadge } from '../../../components/ui';
 import recordsApi from '../../../api/services/recordsService';
 import './RecordPages.css';
 import { useNavigate } from 'react-router-dom';
 
-import { useState } from 'react';
+import { useState,useEffect } from 'react';
 export default function RecordsList() {
   const { id: patientId } = useParams();
   const navigate = useNavigate();
+
+  // dummy data for testing
+const DUMMY_PATIENT_ID = "1";
+
+const DUMMY_RECORDS_FOR_PATIENT_1 = [
+  {
+    record_id: 101,
+    title: "Blood Test Report - April 2026",
+    record_type: "LAB_RESULT",
+    created_by: "Dr. Sara Ahmed",
+    created_at: "2026-05-01T10:30:00Z",
+  },
+  {
+    record_id: 102,
+    title: "Chest X-Ray - Follow up",
+    record_type: "IMAGING",
+    created_by: "Dr. Omar Hassan",
+    created_at: "2026-05-03T14:10:00Z",
+  },
+];
+
   
-const [records,setRecords] = useState([]);
+const [records,setRecords] = useState(null);
+
 const [recordType,setRecordType] = useState('all');
-const [fromDate,setFromDate] = useState('');
+const [fromDate,setFromDate] = useState('1-1-1970');
 
 const [emptyMessage,setEmptyMessage] = useState('No records found.');
-const retrieveRecords = async () => {
+
+
+const retrieveRecords = async (filters={}) => {
   try{
-  const response = await recordsApi.getRecords(patientId, { recordType, fromDate });
+  const response = await recordsApi.getRecords(patientId, filters);
   setRecords(response.data);
   } catch (error) {
     switch(error.response.status){
@@ -48,11 +72,49 @@ const retrieveRecords = async () => {
     }
     }
 }
-//intial records set before filtration
-retrieveRecords();
 
- const handleFilter = () => {
-  retrieveRecords();
+
+function getUserIdFromStorage() {
+  try {
+    const raw = localStorage.getItem('user');
+    if (!raw) return null;
+
+    const user = JSON.parse(raw);
+    return user?.id ?? user?.User_Id ?? null; // supports either naming
+  } catch {
+    return null;
+  }
+}
+
+
+
+
+//intial records set before filtration
+useEffect(() => {
+  if(Number(patientId) === 1){
+    setRecords(DUMMY_RECORDS_FOR_PATIENT_1);
+    return;
+  } else if (patientId === "me"){
+    const currentID = getUserIdFromStorage();
+    if(!currentID){
+      return;
+    } else {
+      if(currentID === 1){
+        setRecords(DUMMY_RECORDS_FOR_PATIENT_1);
+    return;
+      }
+    }
+  }
+  //retrieveRecords();
+}, []);
+
+ const handleFilter = (filters) => {
+ 
+  const recordsByDate = records.filter((record)=> record.created_at === fromDate)
+
+
+  setRecords(recordsByDate);
+  //retrieveRecords(filters);
  }
  const handleRowClick = (record) => {
   navigate(`/patients/${patientId}/records/${record.record_id}`);
@@ -62,13 +124,19 @@ retrieveRecords();
 
  const columns = [
   { key: 'title', label: 'Title' },
-  { key: 'record_type', label: 'Record Type' },
+  { key: 'record_type', label: 'Record Type',
+    render:(value) => (<StatusBadge status={value}/>)
+   },
   { key: 'created_by', label: 'Created By' },
-  { key: 'created_at', label: 'Created At' },
+  { key: 'created_at', label: 'Created At',
+    render: (value) => (value ? new Date(value).toLocaleString() : 'N/A'),
+  },
 ]
 
 
+
   return (
+    <>
     <div className="records-filter-bar">
     <div className="records-filter-field">
       <label className="records-filter-label" htmlFor="record-type">Record Type</label>
@@ -100,12 +168,15 @@ retrieveRecords();
     />
   </div>
   <div className="records-filter-actions">
-    <Button onClick={() => handleFilter(recordType, fromDate)}>Filter</Button>
+    <Button onClick={() => handleFilter({recordType, fromDate})}>Filter</Button>
   </div>
-
+  </div>
 {/* TODO: Add DataTable with MedicalRecord data */}
 
-<DataTable columns={columns} data={records} emptyMessage={emptyMessage} onRowClick={handleRowClick} />
-    </div>
+    
+    <div>
+    <DataTable columns={columns} data={records} emptyMessage={emptyMessage} onRowClick={handleRowClick} />
+      </div>
+      </>
   );
 }

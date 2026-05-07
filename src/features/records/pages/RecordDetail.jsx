@@ -17,24 +17,116 @@
  * - Back button to records list
  */
 import { useParams,useNavigate } from 'react-router-dom';
-import { Card, Button, StatusBadge } from '../../../components/ui';
+import { Card, Button, StatusBadge,DataTable} from '../../../components/ui';
 import './RecordPages.css';
 import recordsApi from '../../../api/services/recordsService';
 import { useState,useEffect } from 'react';
 
 export default function RecordDetail() {
   const { id: patientId, recordId } = useParams();
+  const navigate = useNavigate();
+// dummy data for testing
+const DUMMY_RECORD_101 = {
+  title: "Blood Test Report - April 2026",
+  record_type: "LAB_RESULT",
+  created_by: "Dr. Sara Ahmed",
+  created_at: "2026-05-01T10:30:00Z",
+  description: "CBC + differential. All values within expected range.",
+};
+
+const DUMMY_RECORD_102 = {
+  record_id: 102,
+  patient_id: 1,
+  title: "Chest X-Ray - Follow Up",
+  record_type: "IMAGING",
+  created_by: "Dr. Omar Hassan",
+  created_at: "2026-05-03T14:10:00Z",
+  description:
+    "Chest X-ray follow-up after persistent cough. Mild perihilar markings, no focal consolidation, no pleural effusion. Clinical correlation advised.",
+};
+
+const DUMMY_DOCUMENTS_FOR_RECORD_101 = [
+  {
+    Document_Id: 9001,
+    Record_Id: 101,
+    file_name: "cbc_april_2026.pdf",
+    file_path: "/uploads/records/101/cbc_april_2026.pdf",
+    file_type: "application/pdf",
+    file_size: 234567,
+    Uploaded_by: 1,
+    created_at: "2026-05-01T10:35:00Z",
+  },
+  {
+    Document_Id: 9002,
+    Record_Id: 101,
+    file_name: "lab_summary_notes.txt",
+    file_path: "/uploads/records/101/lab_summary_notes.txt",
+    file_type: "text/plain",
+    file_size: 4821,
+    Uploaded_by: 1,
+    created_at: "2026-05-01T10:40:00Z",
+  },
+];
+
+
+const DUMMY_DOCUMENTS_FOR_RECORD_102 = [
+  {
+    Document_Id: 9101,
+    Record_Id: 102,
+    file_name: "chest_xray_ap_2026_05_03.png",
+    file_path: "/uploads/records/102/chest_xray_ap_2026_05_03.png",
+    file_type: "image/png",
+    file_size: 1845220,
+    Uploaded_by: 1,
+    created_at: "2026-05-03T14:20:00Z",
+  },
+  {
+    Document_Id: 9102,
+    Record_Id: 102,
+    file_name: "radiology_report_2026_05_03.pdf",
+    file_path: "/uploads/records/102/radiology_report_2026_05_03.pdf",
+    file_type: "application/pdf",
+    file_size: 348912,
+    Uploaded_by: 1,
+    created_at: "2026-05-03T14:28:00Z",
+  },
+  {
+    Document_Id: 9103,
+    Record_Id: 102,
+    file_name: "followup_instructions.txt",
+    file_path: "/uploads/records/102/followup_instructions.txt",
+    file_type: "text/plain",
+    file_size: 5294,
+    Uploaded_by: 1,
+    created_at: "2026-05-03T14:31:00Z",
+  },
+];
+
   const [record,setRecord] = useState(null);
   const [recError,setRecError] = useState(null);
 const [documents,setDocuments] = useState([]);
 const [docError, setDocError] = useState(null);
-const navigate = useNavigate();
+const [emptyMessage,setEmptyMessage] = useState("Something went wrong");
+
+
+
+
+
+
   const fetchRecord = async () => {
     const response = await recordsApi.getRecordById(patientId, recordId);
     setRecord(response.data);
   }
 useEffect( () => {
  
+if (Number(recordId) === 101){
+  setRecord(DUMMY_RECORD_101);
+  return;
+} else if (Number(recordId) === 102){
+  setRecord(DUMMY_RECORD_102);
+  return;
+}
+
  const run = async()=> {
   try{
     await fetchRecord();
@@ -42,7 +134,7 @@ useEffect( () => {
       setRecError(error);
       }
  }
- run();
+ //run();
 }, []);
 
 const fetchDocuments = async()=>{
@@ -51,13 +143,22 @@ const fetchDocuments = async()=>{
 }
 
 useEffect(()=>{
+
+  if(Number(recordId)===101){
+    setDocuments(DUMMY_DOCUMENTS_FOR_RECORD_101);
+    return;
+}else if(Number(recordId) === 102){
+  setDocuments(DUMMY_DOCUMENTS_FOR_RECORD_102);
+    return;
+}
+
   const run =async ()=>{ try{
     await fetchDocuments();
     }catch(error){
       setDocError(error);
     }
   }
-  if(record) run();
+  //if(record) run();
 },[record])
 
 
@@ -103,7 +204,19 @@ const handleDownload = async (documentId, fallbackFileName = 'document') => {
   }
 };
 
+// record header and data
+//prepare columns
 
+const columns = [
+  { key: 'title', label: 'Title' },
+  { key: 'record_type', label: 'Record Type',
+    render:(value) => (<StatusBadge status={value}/>)
+   },
+  { key: 'created_by', label: 'Created By' },
+  { key: 'created_at', label: 'Created At',
+    render: (value) => (value ? new Date(value).toLocaleString() : 'N/A'),
+  },
+]
   
   
   
@@ -119,28 +232,34 @@ return (
     <Button onClick={() => navigate(`/patients/${patientId}/records`)}>Back</Button>
 
     {/* TODO: MedicalRecord header (Title, Created_by, created_at, Record_type badge) */}
-    <Card className="record-header">
+    {/* <Card className="record-header">
     <span className="col title">Title</span>
 <span className="col type">
-  <StatusBadge>Record Type</StatusBadge>
+  Record Type
 </span>
 <span className="col created-by">Created By</span>
 <span className="col created-at">
 Created At
 </span>
-    </Card>
+    </Card> */}
+    {/* will use datatable instead */}
+
+    
     
     {/* TODO: Description content (type-specific rendering) */}
-    <Card className="record-header-row">
+    {/* <Card className="record-header-row">
 <span className="col title">{record?.Title || 'Untitled Record'}</span>
 <span className="col type">
-  <StatusBadge>{record?.Record_type || 'UNKNOWN'}</StatusBadge>
+  <StatusBadge status= {String(record?.Record_Type)}/>
 </span>
 <span className="col created-by">{record?.Created_by || 'N/A'}</span>
 <span className="col created-at">
   {record?.created_at ? new Date(record.created_at).toLocaleString() : 'N/A'}
 </span>
-</Card>
+</Card> */}
+
+<DataTable columns={columns} data={[record]} emptyMessage={emptyMessage}  />
+   
     {/* TODO: Document attachments list with download buttons */}
     <DocumentSection documents = {documents} docError = {docError} handleDownload = {handleDownload} />
   </div>
@@ -196,7 +315,7 @@ function DocumentSection (props){
           <div className="document-info">
             <div><strong>{doc.file_name || 'Unnamed file'}</strong></div>
             <div>Type: {doc.file_type || 'N/A'}</div>
-            <div>Size: {doc.file_size ?? 'N/A'}</div>
+           
           </div>
 
           <Button onClick={() => props.handleDownload(doc.Document_Id,doc.file_name)}>
