@@ -109,12 +109,7 @@ useEffect(() => {
 }, []);
 
  const handleFilter = (filters) => {
- 
-  const recordsByDate = records.filter((record)=> record.created_at === fromDate)
-
-
-  setRecords(recordsByDate);
-  //retrieveRecords(filters);
+  retrieveRecords(filters);
  }
  const handleRowClick = (record) => {
   navigate(`/patients/${patientId}/records/${record.record_id}`);
