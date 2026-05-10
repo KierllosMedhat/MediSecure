@@ -16,223 +16,312 @@
  * - Handle 403 → show "Access Denied / Consent Required" message
  * - Back button to records list
  */
-import { useParams,useNavigate } from 'react-router-dom';
-import { Card, Button, StatusBadge,DataTable} from '../../../components/ui';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Card, Button, StatusBadge, DataTable } from '../../../components/ui';
 import './RecordPages.css';
 import recordsApi from '../../../api/services/recordsService';
-import { useState,useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 export default function RecordDetail() {
   const { id: patientId, recordId } = useParams();
   const navigate = useNavigate();
-// dummy data for testing
-const DUMMY_RECORD_101 = {
-  title: "Blood Test Report - April 2026",
-  record_type: "LAB_RESULT",
-  created_by: "Dr. Sara Ahmed",
-  created_at: "2026-05-01T10:30:00Z",
-  description: "CBC + differential. All values within expected range.",
-};
 
-const DUMMY_RECORD_102 = {
-  record_id: 102,
-  patient_id: 1,
-  title: "Chest X-Ray - Follow Up",
-  record_type: "IMAGING",
-  created_by: "Dr. Omar Hassan",
-  created_at: "2026-05-03T14:10:00Z",
-  description:
-    "Chest X-ray follow-up after persistent cough. Mild perihilar markings, no focal consolidation, no pleural effusion. Clinical correlation advised.",
-};
+  // dummy data for testing
+  const DUMMY_RECORD_101 = {
+    record_id: 101,
+    patient_id: 1,
+    title: "Blood Test Report - April 2026",
+    record_type: "LAB_RESULT",
+    created_by: "Dr. Sara Ahmed",
+    created_at: "2026-05-01T10:30:00Z",
+    description: "CBC + differential. All values within expected range.",
+  };
 
-const DUMMY_DOCUMENTS_FOR_RECORD_101 = [
-  {
-    Document_Id: 9001,
-    Record_Id: 101,
-    file_name: "cbc_april_2026.pdf",
-    file_path: "/uploads/records/101/cbc_april_2026.pdf",
-    file_type: "application/pdf",
-    file_size: 234567,
-    Uploaded_by: 1,
-    created_at: "2026-05-01T10:35:00Z",
-  },
-  {
-    Document_Id: 9002,
-    Record_Id: 101,
-    file_name: "lab_summary_notes.txt",
-    file_path: "/uploads/records/101/lab_summary_notes.txt",
-    file_type: "text/plain",
-    file_size: 4821,
-    Uploaded_by: 1,
-    created_at: "2026-05-01T10:40:00Z",
-  },
-];
+  const DUMMY_RECORD_102 = {
+    record_id: 102,
+    patient_id: 1,
+    title: "Chest X-Ray - Follow Up",
+    record_type: "IMAGING",
+    created_by: "Dr. Omar Hassan",
+    created_at: "2026-05-03T14:10:00Z",
+    description:
+      "Chest X-ray follow-up after persistent cough. Mild perihilar markings, no focal consolidation, no pleural effusion. Clinical correlation advised.",
+  };
 
-
-const DUMMY_DOCUMENTS_FOR_RECORD_102 = [
-  {
-    Document_Id: 9101,
-    Record_Id: 102,
-    file_name: "chest_xray_ap_2026_05_03.png",
-    file_path: "/uploads/records/102/chest_xray_ap_2026_05_03.png",
-    file_type: "image/png",
-    file_size: 1845220,
-    Uploaded_by: 1,
-    created_at: "2026-05-03T14:20:00Z",
-  },
-  {
-    Document_Id: 9102,
-    Record_Id: 102,
-    file_name: "radiology_report_2026_05_03.pdf",
-    file_path: "/uploads/records/102/radiology_report_2026_05_03.pdf",
-    file_type: "application/pdf",
-    file_size: 348912,
-    Uploaded_by: 1,
-    created_at: "2026-05-03T14:28:00Z",
-  },
-  {
-    Document_Id: 9103,
-    Record_Id: 102,
-    file_name: "followup_instructions.txt",
-    file_path: "/uploads/records/102/followup_instructions.txt",
-    file_type: "text/plain",
-    file_size: 5294,
-    Uploaded_by: 1,
-    created_at: "2026-05-03T14:31:00Z",
-  },
-];
-
-  const [record,setRecord] = useState(null);
-  const [recError,setRecError] = useState(null);
-const [documents,setDocuments] = useState([]);
-const [docError, setDocError] = useState(null);
-const [emptyMessage,setEmptyMessage] = useState("Something went wrong");
+  const DUMMY_DOCUMENTS_FOR_RECORD_101 = [
+    {
+      document_id: 9001,
+      record_id: 101,
+      file_name: "cbc_april_2026.pdf",
+      file_path: "/uploads/records/101/cbc_april_2026.pdf",
+      file_type: "application/pdf",
+      file_size: 234567,
+      uploaded_by: 1,
+      created_at: "2026-05-01T10:35:00Z",
+    },
+    {
+      document_id: 9002,
+      record_id: 101,
+      file_name: "lab_summary_notes.txt",
+      file_path: "/uploads/records/101/lab_summary_notes.txt",
+      file_type: "text/plain",
+      file_size: 4821,
+      uploaded_by: 1,
+      created_at: "2026-05-01T10:40:00Z",
+    },
+  ];
 
 
+  const DUMMY_DOCUMENTS_FOR_RECORD_102 = [
+    {
+      document_id: 9101,
+      record_id: 102,
+      file_name: "chest_xray_ap_2026_05_03.png",
+      file_path: "/uploads/records/102/chest_xray_ap_2026_05_03.png",
+      file_type: "image/png",
+      file_size: 1845220,
+      uploaded_by: 1,
+      created_at: "2026-05-03T14:20:00Z",
+    },
+    {
+      document_id: 9102,
+      record_id: 102,
+      file_name: "radiology_report_2026_05_03.pdf",
+      file_path: "/uploads/records/102/radiology_report_2026_05_03.pdf",
+      file_type: "application/pdf",
+      file_size: 348912,
+      uploaded_by: 1,
+      created_at: "2026-05-03T14:28:00Z",
+    },
+    {
+      document_id: 9103,
+      record_id: 102,
+      file_name: "followup_instructions.txt",
+      file_path: "/uploads/records/102/followup_instructions.txt",
+      file_type: "text/plain",
+      file_size: 5294,
+      uploaded_by: 1,
+      created_at: "2026-05-03T14:31:00Z",
+    },
+  ];
+
+  const [record, setRecord] = useState(null);
+  const [recError, setRecError] = useState(null);
+  const [documents, setDocuments] = useState([]);
+  const [docError, setDocError] = useState(null);
+  const [emptyMessage, setEmptyMessage] = useState("Something went wrong");
+
+  // drag and drop states
+  const [file, setFile] = useState(null);
+  const [isDragging, setIsDragging] = useState(null);
+  const inputRef = useRef();
+  const [isUploading, setIsUploading] = useState(null);
+  //dummy data for trial
+  const [nextDocID, setNextDocID] = useState(9104);
+
+  const handleonDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+  }
+
+  const handleonDragLeave = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  }
+
+  const handleFile = (addedFile) => {
+    if (!addedFile) return;
+    setFile(addedFile);
+  }
 
 
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
 
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const droppedFile = e.dataTransfer.files?.[0];
+    handleFile(droppedFile);
+  };
+
+  const handleBrowseClick = () => {
+    inputRef.current?.click();
+  };
+  const handleInputChange = (e) => {
+    const selectedFile = e.target.files?.[0];
+    handleFile(selectedFile);
+  };
+
+  const handleUpload = async () => {
+    if (!file) {
+      alert("File was not uploaded try agian");
+      return;
+    }
+
+    try {
+
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const newDocument = {
+        document_idd: nextDocID,
+        record_id: recordId,
+        file_name: file.name,
+        file_path: `/uploads/records/102/${file.name}.${file.type}`,
+        file_type: file.type,
+        file_size: file.size,
+        uploaded_By: patientId,
+        created_at: `${new Date().toLocaleString()}`
+
+      }
+
+      //add to documents
+      setDocuments([...documents, newDocument]);
+      setNextDocID(nextDocID + 1);
+      //await recordsApi.uploadDocument(recordId,formData);
+
+      await new Promise((resolve) => setTimeout(resolve, 800)); // demo delay
+      alert(`Upload success: ${file.name}`);
+    } catch (error) {
+      console.error(error);
+      alert("Upload failed.");
+    } finally {
+      setIsUploading(false);
+      setFile(null);
+    }
+
+  }
 
   const fetchRecord = async () => {
     const response = await recordsApi.getRecordById(patientId, recordId);
     setRecord(response.data);
   }
-useEffect( () => {
- 
-if (Number(recordId) === 101){
-  setRecord(DUMMY_RECORD_101);
-  return;
-} else if (Number(recordId) === 102){
-  setRecord(DUMMY_RECORD_102);
-  return;
-}
+  useEffect(() => {
 
- const run = async()=> {
-  try{
-    await fetchRecord();
-    }catch (error) {
-      setRecError(error);
-      }
- }
- //run();
-}, []);
-
-const fetchDocuments = async()=>{
-  const documents = await recordsApi.getDocumentsByRecord(recordId);
-  setDocuments(documents.data)
-}
-
-useEffect(()=>{
-
-  if(Number(recordId)===101){
-    setDocuments(DUMMY_DOCUMENTS_FOR_RECORD_101);
-    return;
-}else if(Number(recordId) === 102){
-  setDocuments(DUMMY_DOCUMENTS_FOR_RECORD_102);
-    return;
-}
-
-  const run =async ()=>{ try{
-    await fetchDocuments();
-    }catch(error){
-      setDocError(error);
-    }
-  }
-  //if(record) run();
-},[record])
-
-
-
-const handleDownload = async (documentId, fallbackFileName = 'document') => {
-  try {
-    const response = await recordsApi.downloadDocument(documentId);
-
-    // response.data is the blob payload from axios (responseType: 'blob')
-    const blob = response.data instanceof Blob
-      ? response.data
-      : new Blob([response.data]);
-
-    // Try to read filename from Content-Disposition header first
-    const contentDisposition =
-      response.headers?.['content-disposition'] ||
-      response.headers?.['Content-Disposition'];
-
-    let fileName = fallbackFileName;
-
-    if (contentDisposition) {
-      // Supports: filename="x.pdf" and filename*=UTF-8''x.pdf
-      const utf8Match = contentDisposition.match(/filename\*\s*=\s*UTF-8''([^;]+)/i);
-      const asciiMatch = contentDisposition.match(/filename\s*=\s*"([^"]+)"|filename\s*=\s*([^;]+)/i);
-
-      if (utf8Match?.[1]) {
-        fileName = decodeURIComponent(utf8Match[1]);
-      } else if (asciiMatch) {
-        fileName = (asciiMatch[1] || asciiMatch[2] || fallbackFileName).trim();
-      }
+    if (Number(recordId) === 101) {
+      setRecord(DUMMY_RECORD_101);
+      return;
+    } else if (Number(recordId) === 102) {
+      setRecord(DUMMY_RECORD_102);
+      return;
     }
 
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = fileName;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    window.URL.revokeObjectURL(url);
-  } catch (error) {
-    console.error('Failed to download document', error);
+    const run = async () => {
+      try {
+        await fetchRecord();
+      } catch (error) {
+        setRecError(error);
+      }
+    }
+    //run();
+  }, []);
+
+  const fetchDocuments = async () => {
+    const documents = await recordsApi.getDocumentsByRecord(recordId);
+    setDocuments(documents.data)
   }
-};
 
-// record header and data
-//prepare columns
+  useEffect(() => {
 
-const columns = [
-  { key: 'title', label: 'Title' },
-  { key: 'record_type', label: 'Record Type',
-    render:(value) => (<StatusBadge status={value}/>)
-   },
-  { key: 'created_by', label: 'Created By' },
-  { key: 'created_at', label: 'Created At',
-    render: (value) => (value ? new Date(value).toLocaleString() : 'N/A'),
-  },
-]
-  
-  
-  
-if(recError){
-  return <ErrorFallback errorCode={recError.response.status} onRetry={fetchRecord} patientId = {patientId} />;
-  
-}else if(!record){
-  return <p>Loading...</p>
-}
-return (
-  <div className="records-page">
-    {/* TODO: Back link */}
-    <Button onClick={() => navigate(`/patients/${patientId}/records`)}>Back</Button>
+    if (Number(recordId) === 101) {
+      setDocuments(DUMMY_DOCUMENTS_FOR_RECORD_101);
+      return;
+    } else if (Number(recordId) === 102) {
+      setDocuments(DUMMY_DOCUMENTS_FOR_RECORD_102);
+      return;
+    }
 
-    {/* TODO: MedicalRecord header (Title, Created_by, created_at, Record_type badge) */}
-    {/* <Card className="record-header">
+    const run = async () => {
+      try {
+        await fetchDocuments();
+      } catch (error) {
+        setDocError(error);
+      }
+    }
+    //if(record) run();
+  }, [record])
+
+
+
+  const handleDownload = async (documentId, fallbackFileName = 'document') => {
+    try {
+      const response = await recordsApi.downloadDocument(documentId);
+
+      // response.data is the blob payload from axios (responseType: 'blob')
+      const blob = response.data instanceof Blob
+        ? response.data
+        : new Blob([response.data]);
+
+      // Try to read filename from Content-Disposition header first
+      const contentDisposition =
+        response.headers?.['content-disposition'] ||
+        response.headers?.['Content-Disposition'];
+
+      let fileName = fallbackFileName;
+
+      if (contentDisposition) {
+        // Supports: filename="x.pdf" and filename*=UTF-8''x.pdf
+        const utf8Match = contentDisposition.match(/filename\*\s*=\s*UTF-8''([^;]+)/i);
+        const asciiMatch = contentDisposition.match(/filename\s*=\s*"([^"]+)"|filename\s*=\s*([^;]+)/i);
+
+        if (utf8Match?.[1]) {
+          fileName = decodeURIComponent(utf8Match[1]);
+        } else if (asciiMatch) {
+          fileName = (asciiMatch[1] || asciiMatch[2] || fallbackFileName).trim();
+        }
+      }
+
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to download document', error);
+    }
+  };
+
+  // record header and data
+  //prepare columns
+
+  const columns = [
+    { key: 'title', label: 'Title' },
+    {
+      key: 'record_type', label: 'Record Type',
+      render: (value) => (<StatusBadge status={value} />)
+    },
+    { key: 'created_by', label: 'Created By' },
+    {
+      key: 'created_at', label: 'Created At',
+      render: (value) => (value ? new Date(value).toLocaleString() : 'N/A'),
+    },
+  ]
+
+
+
+  if (recError) {
+    return <ErrorFallback errorCode={recError.response.status} onRetry={fetchRecord} patientId={patientId} />;
+
+  } else if (!record) {
+    return <p>Loading...</p>
+  }
+  return (
+    <div className="records-page">
+      {/* TODO: Back link */}
+      <Button onClick={() => navigate(`/patients/${patientId}/records`)}>Back</Button>
+
+      {/* TODO: MedicalRecord header (Title, Created_by, created_at, Record_type badge) */}
+      {/* <Card className="record-header">
     <span className="col title">Title</span>
 <span className="col type">
   Record Type
@@ -242,28 +331,56 @@ return (
 Created At
 </span>
     </Card> */}
-    {/* will use datatable instead */}
+      {/* will use datatable instead */}
 
-    
-    
-    {/* TODO: Description content (type-specific rendering) */}
-    {/* <Card className="record-header-row">
-<span className="col title">{record?.Title || 'Untitled Record'}</span>
-<span className="col type">
-  <StatusBadge status= {String(record?.Record_Type)}/>
-</span>
-<span className="col created-by">{record?.Created_by || 'N/A'}</span>
-<span className="col created-at">
-  {record?.created_at ? new Date(record.created_at).toLocaleString() : 'N/A'}
-</span>
-</Card> */}
 
-<DataTable columns={columns} data={[record]} emptyMessage={emptyMessage}  />
-   
-    {/* TODO: Document attachments list with download buttons */}
-    <DocumentSection documents = {documents} docError = {docError} handleDownload = {handleDownload} />
-  </div>
-);
+
+      {/* TODO: Description content (type-specific rendering) */}
+
+
+      <DataTable columns={columns} data={[record]} emptyMessage={emptyMessage} />
+
+      {/* TODO: Document attachments list with download buttons */}
+      <DocumentSection documents={documents} docError={docError} handleDownload={handleDownload} />
+
+      <div className="upload-section">
+        <div
+          className={`drop-zone ${isDragging ? "drop-zone--active" : ""}`}
+          onClick={handleBrowseClick}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
+          <input
+            ref={inputRef}
+            type="file"
+            className="drop-zone__input"
+            onChange={handleInputChange}
+          />
+          <p className="drop-zone__text">
+            {file
+              ? `Selected: ${file.name}`
+              : "Drag & drop a file here, or click to browse"}
+          </p>
+          {file && (
+            <p className="drop-zone__meta">
+              {(file.size / 1024).toFixed(1)} KB
+            </p>
+          )}
+        </div>
+        <button
+          type="button"
+          className="upload-btn"
+          onClick={handleUpload}
+          disabled={!file || isUploading}
+        >
+          {isUploading ? "Uploading..." : "Upload"}
+        </button>
+      </div>
+    </div>
+
+
+  );
 }
 
 function ErrorFallback(props) {
@@ -295,37 +412,41 @@ function ErrorFallback(props) {
   );
 }
 
-function DocumentSection (props){
+function DocumentSection(props) {
   const documents = props.documents;
-  if(props.docError){
+  const docListRef = useRef(null);
+  if (props.docError) {
     return (
       <p> could not retreive documents</p>
     );
   }
   return (
-<Card className="record-documents">
-  <h3>Attachments</h3>
+    <Card className="record-documents">
+      <h3>Attachments</h3>
 
-  {documents.length === 0 ? (
-    <p>No documents available.</p>
-  ) : (
-    <ul className="documents-list">
-      {documents.map((doc) => (
-        <li key={doc.Document_Id} className="document-item">
-          <div className="document-info">
-            <div><strong>{doc.file_name || 'Unnamed file'}</strong></div>
-            <div>Type: {doc.file_type || 'N/A'}</div>
-           
-          </div>
+      {documents.length === 0 ? (
+        <p>No documents available.</p>
+      ) : (
+        <ul className="documents-list" ref={docListRef}>
+          {documents.map((doc) => (
+            <li key={doc.Document_Id} className="document-item">
+              <div className="document-info">
+                <div><strong>{doc.file_name || 'Unnamed file'}</strong></div>
+                <div>Type: {doc.file_type || 'N/A'}</div>
 
-          <Button onClick={() => props.handleDownload(doc.Document_Id,doc.file_name)}>
-            Download
-          </Button>
-        </li>
-      ))}
-    </ul>
-  )}
-</Card>
+              </div>
+
+              <Button onClick={() => props.handleDownload(doc.Document_Id, doc.file_name)}>
+                Download
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Card>
+
+
 
   );
 }
+
