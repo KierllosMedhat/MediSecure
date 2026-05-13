@@ -300,6 +300,9 @@ export default function RecordDetail() {
       key: 'record_type', label: 'Record Type',
       render: (value) => (<StatusBadge status={value} />)
     },
+    {
+      key: 'description', label: 'Description'
+    },
     { key: 'created_by', label: 'Created By' },
     {
       key: 'created_at', label: 'Created At',
@@ -331,7 +334,7 @@ export default function RecordDetail() {
 Created At
 </span>
     </Card> */}
-      {/* will use datatable instead */}
+      
 
 
 
