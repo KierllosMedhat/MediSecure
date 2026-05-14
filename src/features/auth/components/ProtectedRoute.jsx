@@ -1,9 +1,11 @@
 /**
  * ProtectedRoute — redirects unauthenticated users to login.
+ * If allowedRoles is provided, unauthorized roles are sent to their dashboard.
  * Owner: Abanob
  */
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../hooks/useAuth';
+import { getDashboardPath } from '../roles';
 
 export default function ProtectedRoute({ allowedRoles }) {
   const { isAuthenticated, user, loading } = useAuth();
@@ -22,9 +24,7 @@ export default function ProtectedRoute({ allowedRoles }) {
   }
 
   if (allowedRoles && !allowedRoles.includes(user?.role)) {
-    // Role-based redirect
-    const fallback = user?.role === 'PATIENT' ? '/dashboard' : '/staff/dashboard';
-    return <Navigate to={fallback} replace />;
+    return <Navigate to={getDashboardPath(user?.role)} replace />;
   }
 
   return <Outlet />;

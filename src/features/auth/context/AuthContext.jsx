@@ -5,28 +5,32 @@
  *
  * Owner: Abanob
  */
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useState, useCallback } from 'react';
 import authApi from '../../../api/services/authService';
 import { setTokens, clearTokens } from '../../../api/apiClient';
+import { getDashboardPath } from '../roles';
 
 const AuthContext = createContext(null);
 
-export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  /* Hydrate user profile from sessionStorage on mount (non-sensitive data) */
-  useEffect(() => {
-    const storedUser = sessionStorage.getItem('user');
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch {
-        sessionStorage.removeItem('user');
-      }
+/**
+ * Hydrate user from sessionStorage (lazy initializer — avoids setState in effect).
+ * Returns { user, loading } to initialize both state values synchronously.
+ */
+function getInitialUser() {
+  const storedUser = sessionStorage.getItem('user');
+  if (storedUser) {
+    try {
+      return JSON.parse(storedUser);
+    } catch {
+      sessionStorage.removeItem('user');
     }
-    setLoading(false);
-  }, []);
+  }
+  return null;
+}
+
+export function AuthProvider({ children }) {
+  const [user, setUser] = useState(getInitialUser);
+  const [loading] = useState(false);
 
   const login = useCallback(async (email, password, deviceId) => {
     const { data } = await authApi.login({ email, password, device_id: deviceId });
@@ -43,24 +47,26 @@ export function AuthProvider({ children }) {
     setUser(null);
   }, []);
 
+  /** Merge partial updates into user state + sessionStorage. */
+  const updateUser = useCallback((partial) => {
+    setUser((prev) => {
+      const merged = { ...prev, ...partial };
+      sessionStorage.setItem('user', JSON.stringify(merged));
+      return merged;
+    });
+  }, []);
+
   const value = {
     user,
     loading,
     isAuthenticated: !!user,
     login,
     logout,
-    setUser,
+    updateUser,
+    getDashboardPath,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
 }
 
 export default AuthContext;

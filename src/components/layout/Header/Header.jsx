@@ -2,7 +2,7 @@
  * Header bar — displays page title, search, user avatar, notifications.
  * Owner: Kyrillos (Shared UI)
  */
-import { useAuth } from '../../../features/auth/context/AuthContext';
+import { useAuth } from '../../../features/auth/hooks/useAuth';
 import { IoNotificationsOutline, IoSearchOutline } from 'react-icons/io5';
 import './Header.css';
 

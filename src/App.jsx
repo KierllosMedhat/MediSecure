@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate } from "react-router-dom";
+import { ROLES, STAFF_ROLES, ALL_ROLES } from "./features/auth/roles";
 
 /* ---- Layouts ---- */
 import AuthLayout from "./layouts/AuthLayout";
@@ -53,11 +54,10 @@ import "./App.css";
 function App() {
   return (
     <Routes>
-      {/* ========== Public / Auth Routes ========== */}
-
-      {/* ========== Landing Page ========== */}
+      {/* ========== Landing Page (public) ========== */}
       <Route path="/" element={<LandingPage />} />
 
+      {/* ========== Auth Routes (public, redirects if logged in) ========== */}
       <Route element={<PublicRoute />}>
         <Route element={<AuthLayout />}>
           <Route path="/auth/login" element={<LoginPage />} />
@@ -70,14 +70,18 @@ function App() {
         </Route>
       </Route>
 
-      {/* ========== Protected Routes ========== */}
-      <Route element={<ProtectedRoute />}>
+      {/* ========== Patient Routes (PATIENT only) ========== */}
+      <Route element={<ProtectedRoute allowedRoles={[ROLES.PATIENT]} />}>
         <Route element={<DashboardLayout />}>
-          {/* Patient Routes */}
           <Route path="/dashboard" element={<PatientDashboard />} />
           <Route path="/patients/profile" element={<PatientProfile />} />
+        </Route>
+      </Route>
 
-          {/* Records (Fadi) */}
+      {/* ========== Shared Routes (all authenticated users) ========== */}
+      <Route element={<ProtectedRoute allowedRoles={ALL_ROLES} />}>
+        <Route element={<DashboardLayout />}>
+          {/* Records */}
           <Route path="/patients/:id/records" element={<RecordsList />} />
           <Route
             path="/patients/:id/records/:recordId"
@@ -85,34 +89,42 @@ function App() {
           />
           <Route path="/records/upload" element={<UploadRecord />} />
 
-          {/* Consent (Abdullah) */}
+          {/* Consent */}
           <Route
             path="/patients/:id/consents"
             element={<ConsentManagement />}
           />
 
-          {/* Payments (Abdullah) */}
+          {/* Payments */}
           <Route path="/payments" element={<PaymentsPage />} />
           <Route
             path="/payments/receipt/:paymentId"
             element={<PaymentReceipt />}
           />
 
-          {/* Staff / Admin (Kyrillos) */}
-          <Route path="/staff/dashboard" element={<StaffDashboard />} />
-          <Route path="/staff/list" element={<StaffList />} />
-          <Route path="/staff/new" element={<StaffForm />} />
-          <Route path="/staff/:id/edit" element={<StaffForm />} />
-
-          {/* Appointments (Kyrillos) */}
+          {/* Appointments */}
           <Route path="/appointments" element={<AppointmentsList />} />
           <Route path="/appointments/new" element={<CreateAppointment />} />
 
-          {/* Notifications (Kyrillos) */}
+          {/* Notifications */}
           <Route path="/notifications" element={<NotificationsPage />} />
+        </Route>
+      </Route>
 
-          {/* Audit Logs (Kyrillos — Admin only) */}
+      {/* ========== Staff Routes (DOCTOR, NURSE, BILLING_STAFF, ADMIN) ========== */}
+      <Route element={<ProtectedRoute allowedRoles={STAFF_ROLES} />}>
+        <Route element={<DashboardLayout />}>
+          <Route path="/staff/dashboard" element={<StaffDashboard />} />
+          <Route path="/staff/list" element={<StaffList />} />
           <Route path="/admin/audit-logs" element={<AuditLogsPage />} />
+        </Route>
+      </Route>
+
+      {/* ========== Admin-Only Routes ========== */}
+      <Route element={<ProtectedRoute allowedRoles={[ROLES.ADMIN]} />}>
+        <Route element={<DashboardLayout />}>
+          <Route path="/staff/new" element={<StaffForm />} />
+          <Route path="/staff/:id/edit" element={<StaffForm />} />
         </Route>
       </Route>
 
