@@ -3,7 +3,8 @@
  * Owner: Abanob
  */
 import { Navigate, Outlet } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../hooks/useAuth';
+import { getDashboardPath } from '../roles';
 
 export default function PublicRoute() {
   const { isAuthenticated, user, loading } = useAuth();
@@ -17,8 +18,7 @@ export default function PublicRoute() {
   }
 
   if (isAuthenticated) {
-    const redirectTo = user?.role === 'PATIENT' ? '/dashboard' : '/staff/dashboard';
-    return <Navigate to={redirectTo} replace />;
+    return <Navigate to={getDashboardPath(user?.role)} replace />;
   }
 
   return <Outlet />;

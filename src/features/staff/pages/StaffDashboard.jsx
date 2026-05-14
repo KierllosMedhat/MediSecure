@@ -7,7 +7,7 @@
  * - Include RecentUploadsWidget from records module
  * - Fetch dashboard stats from appropriate APIs
  */
-import { useAuth } from '../../auth/context/AuthContext';
+import { useAuth } from '../../auth/hooks/useAuth';
 import { Card } from '../../../components/ui';
 import './StaffPages.css';
 

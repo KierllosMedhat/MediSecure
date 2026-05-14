@@ -3,7 +3,7 @@
  * Owner: Kyrillos (Shared UI)
  */
 import { NavLink, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../../features/auth/context/AuthContext';
+import { useAuth } from '../../../features/auth/hooks/useAuth';
 import {
   IoHomeOutline,
   IoPersonOutline,

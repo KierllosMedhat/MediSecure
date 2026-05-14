@@ -6,9 +6,10 @@
  */
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from './useAuth';
 import authApi from '../../../api/services/authService';
 import { parseApiError } from '../../../api/errorHandler';
+import { getDashboardPath } from '../roles';
 
 /**
  * Generate a stable device_id for this browser session.
@@ -53,14 +54,11 @@ export function useLoginLogic() {
 
         /* Role-based redirect */
         const from = location.state?.from?.pathname;
-        const userRole = data.user?.role;
 
         if (from) {
           navigate(from, { replace: true });
-        } else if (userRole === 'PATIENT') {
-          navigate('/dashboard', { replace: true });
         } else {
-          navigate('/staff/dashboard', { replace: true });
+          navigate(getDashboardPath(data.user?.role), { replace: true });
         }
       } catch (err) {
         const parsed = parseApiError(err);
