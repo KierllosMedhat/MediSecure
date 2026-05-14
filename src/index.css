@@ -99,6 +99,15 @@
   --sidebar-width: 260px;
   --header-height: 64px;
   --max-content-width: 1200px;
+
+  /* Auth Pages */
+  --color-auth-bg: #e0e5f8;
+  --color-input-bg: #f0f2f5;
+  --color-tab-bg: #eaecf3;
+  --color-tab-active: #ffffff;
+  --color-tab-border: #d0d5e0;
+  --auth-card-max-width: 500px;
+  --auth-card-radius: 14px;
 }
 
 /* ---------- Dark Mode ---------- */
