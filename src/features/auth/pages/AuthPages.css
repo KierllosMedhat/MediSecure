@@ -1,4 +1,62 @@
-/* Shared auth page styles */
+/* ============================================
+   Auth Pages — Shared Styles (Figma Design)
+   ============================================ */
+
+/* ---- Tab Switcher ---- */
+.auth-tabs {
+  display: flex;
+  background: var(--color-tab-bg);
+  border-radius: var(--auth-card-radius) var(--auth-card-radius) 0 0;
+  overflow: hidden;
+}
+
+.auth-tabs__tab {
+  flex: 1;
+  padding: var(--space-3) var(--space-4);
+  text-align: center;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-decoration: none;
+  display: block;
+  line-height: var(--line-height-normal);
+}
+
+.auth-tabs__tab:hover {
+  color: var(--color-text-primary);
+}
+
+.auth-tabs__tab--active {
+  background: var(--color-tab-active);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-tab-border);
+  border-bottom: 1px solid var(--color-tab-active);
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  margin-bottom: -1px;
+  position: relative;
+  z-index: 1;
+}
+
+/* ---- Auth Card ---- */
+.auth-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-tab-border);
+  border-top: none;
+  border-radius: 0 0 var(--auth-card-radius) var(--auth-card-radius);
+  padding: var(--space-8);
+}
+
+/* When no tabs (forgot/reset pages), card gets full border-radius */
+.auth-card--full {
+  border-top: 1px solid var(--color-tab-border);
+  border-radius: var(--auth-card-radius);
+}
+
+/* ---- Page Header ---- */
 .auth-page__title {
   font-size: var(--font-size-2xl);
   font-weight: var(--font-weight-bold);
@@ -12,12 +70,87 @@
   margin-bottom: var(--space-6);
 }
 
+/* ---- Form ---- */
 .auth-page__form {
   display: flex;
   flex-direction: column;
+  gap: var(--space-5);
+}
+
+/* ---- Input overrides for auth pages (gray bg, no border) ---- */
+.auth-page__form .input-group__field {
+  background: var(--color-input-bg);
+  border: 1px solid transparent;
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--font-size-sm);
+  border-radius: var(--radius-md);
+}
+
+.auth-page__form .input-group__field:focus {
+  border-color: var(--color-primary);
+  background: var(--color-surface);
+  box-shadow: 0 0 0 3px var(--color-primary-200);
+}
+
+.auth-page__form .input-group__field::placeholder {
+  color: var(--color-text-muted);
+}
+
+.auth-page__form .input-group__label {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  margin-bottom: var(--space-1);
+}
+
+/* ---- Select (Login As dropdown) ---- */
+.auth-select {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.auth-select__label {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+}
+
+.auth-select__field {
+  background: var(--color-input-bg);
+  border: 1px solid transparent;
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--font-size-sm);
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M3 4.5L6 7.5L9 4.5' stroke='%23475569' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--space-4) center;
+  padding-right: var(--space-10);
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.auth-select__field:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  background-color: var(--color-surface);
+  box-shadow: 0 0 0 3px var(--color-primary-200);
+}
+
+/* ---- Row layout (side by side fields) ---- */
+.auth-page__row {
+  display: flex;
   gap: var(--space-4);
 }
 
+.auth-page__row > * {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ---- Options / Links ---- */
 .auth-page__options {
   display: flex;
   justify-content: flex-end;
@@ -27,19 +160,32 @@
   font-size: var(--font-size-sm);
   color: var(--color-primary);
   font-weight: var(--font-weight-medium);
+  text-decoration: none;
 }
 
 .auth-page__link:hover {
   text-decoration: underline;
 }
 
+/* ---- Footer link ---- */
+.auth-page__footer {
+  margin-top: var(--space-4);
+  text-align: center;
+}
+
+.auth-page__footer-text {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+/* ---- Error & Success Messages ---- */
 .auth-page__error {
   background: var(--color-danger-light);
   color: #991b1b;
   padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-md);
   font-size: var(--font-size-sm);
-  margin-bottom: var(--space-4);
+  animation: fadeIn 0.2s ease-out;
 }
 
 .auth-page__success {
@@ -48,10 +194,74 @@
   padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-md);
   font-size: var(--font-size-sm);
+  animation: fadeIn 0.2s ease-out;
+}
+
+/* ---- Step Indicator (Forgot Password) ---- */
+.auth-steps {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-6);
+}
+
+.auth-steps__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--color-border);
+  transition: all var(--transition-base);
+}
+
+.auth-steps__dot--active {
+  background: var(--color-primary);
+  transform: scale(1.2);
+}
+
+.auth-steps__dot--done {
+  background: var(--color-success);
+}
+
+.auth-steps__line {
+  width: 40px;
+  height: 2px;
+  background: var(--color-border);
+  transition: background var(--transition-base);
+}
+
+.auth-steps__line--done {
+  background: var(--color-success);
+}
+
+/* ---- Back Link ---- */
+.auth-page__back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  margin-bottom: var(--space-5);
+  transition: color var(--transition-fast);
+}
+
+.auth-page__back:hover {
+  color: var(--color-primary);
+}
+
+/* ---- Invalid Link State ---- */
+.auth-page__invalid {
+  text-align: center;
+  padding: var(--space-10) 0;
+}
+
+.auth-page__invalid-icon {
+  font-size: 3rem;
   margin-bottom: var(--space-4);
 }
 
-.auth-page__footer {
-  margin-top: var(--space-6);
-  text-align: center;
+.auth-page__invalid p {
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-6);
 }

@@ -2,12 +2,38 @@
  * Axios instance with JWT interceptors.
  * Handles auto-attach of access token and 401 refresh logic.
  *
+ * SECURITY: Tokens are stored in-memory (module-scoped variables),
+ * NOT in localStorage. On page refresh, tokens are lost and the
+ * user must re-authenticate.
+ *
  * Owner: Abanob (Auth module)
  */
 import axios from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
 
+/* ---- In-memory token storage ---- */
+let accessToken = null;
+let refreshToken = null;
+
+/** Get the current access token from memory. */
+export function getAccessToken() {
+  return accessToken;
+}
+
+/** Store both tokens in memory. */
+export function setTokens(access, refresh) {
+  accessToken = access;
+  refreshToken = refresh;
+}
+
+/** Clear all tokens from memory. */
+export function clearTokens() {
+  accessToken = null;
+  refreshToken = null;
+}
+
+/* ---- Axios instance ---- */
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -19,9 +45,8 @@ const apiClient = axios.create({
 /* ---- Request Interceptor: Attach JWT ---- */
 apiClient.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('access_token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    if (accessToken) {
+      config.headers.Authorization = `Bearer ${accessToken}`;
     }
     return config;
   },
@@ -64,13 +89,11 @@ apiClient.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const refreshToken = localStorage.getItem('refresh_token');
         const { data } = await axios.post(`${API_BASE_URL}/auth/refresh`, {
           refresh_token: refreshToken,
         });
 
-        localStorage.setItem('access_token', data.access_token);
-        localStorage.setItem('refresh_token', data.refresh_token);
+        setTokens(data.access_token, data.refresh_token);
 
         apiClient.defaults.headers.common.Authorization = `Bearer ${data.access_token}`;
         processQueue(null, data.access_token);
@@ -79,8 +102,8 @@ apiClient.interceptors.response.use(
         return apiClient(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError, null);
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
+        clearTokens();
+        sessionStorage.removeItem('user');
         window.location.href = '/auth/login';
         return Promise.reject(refreshError);
       } finally {

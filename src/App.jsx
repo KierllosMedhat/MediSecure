@@ -1,5 +1,4 @@
 import { Routes, Route, Navigate } from "react-router-dom";
-import { useAuth } from "./features/auth/context/AuthContext";
 
 /* ---- Layouts ---- */
 import AuthLayout from "./layouts/AuthLayout";
@@ -7,8 +6,12 @@ import DashboardLayout from "./layouts/DashboardLayout";
 
 /* ---- Auth Pages (Abanob) ---- */
 import LoginPage from "./features/auth/pages/LoginPage";
+import SignUpPage from "./features/auth/pages/SignUpPage";
 import ForgotPasswordPage from "./features/auth/pages/ForgotPasswordPage";
 import ResetPasswordPage from "./features/auth/pages/ResetPasswordPage";
+
+/* ---- Landing Page (Abanob) ---- */
+import LandingPage from "./pages/LandingPage";
 
 /* ---- Patient Pages (Abanob) ---- */
 import PatientDashboard from "./features/patients/pages/PatientDashboard";
@@ -52,9 +55,13 @@ function App() {
     <Routes>
       {/* ========== Public / Auth Routes ========== */}
 
+      {/* ========== Landing Page ========== */}
+      <Route path="/" element={<LandingPage />} />
+
       <Route element={<PublicRoute />}>
         <Route element={<AuthLayout />}>
           <Route path="/auth/login" element={<LoginPage />} />
+          <Route path="/auth/signup" element={<SignUpPage />} />
           <Route
             path="/auth/forgot-password"
             element={<ForgotPasswordPage />}
@@ -110,7 +117,7 @@ function App() {
       </Route>
 
       {/* Fallback */}
-      <Route path="*" element={<Navigate to="/auth/login" replace />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }
