@@ -13,6 +13,7 @@ export default function RecentUploadsWidget({ uploads = [] }) {
   return (
     <Card title="Recent Uploads" subtitle="Latest documents added">
       {/* TODO: Render uploads list or empty state */}
+      
     </Card>
   );
 }

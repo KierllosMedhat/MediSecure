@@ -20,6 +20,7 @@ import './RecordPages.css';
 import { useState,useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useFormik,Formik, Form, Field, ErrorMessage } from 'formik';
+import DragAndDropFileUpload from '../components/DragAndDropFileUpload';
 import * as Yup from 'yup';
 export default function UploadRecord() {
   const { id: patientId} = useParams();
@@ -51,29 +52,6 @@ const [returnedRecordId,setReturnedRecordId] = useState(null);
   });
 
   
-
-  //onSubmit real code 
-  /*onSubmit: async (values, helpers) => {
-  const { setSubmitting, setStatus, setFieldError } = helpers;
-  setStatus(undefined); // clear previous form-level error
-  try {
-    await formSubmit(values);
-    // navigate or toast success
-  } catch (error) {
-    const status = error.response?.status;
-    const body = error.response?.data;
-    // Field errors if your API returns them (adjust to your real shape)
-    if (status === 422 && body?.errors) {
-      Object.entries(body.errors).forEach(([field, messages]) => {
-        setFieldError(field, Array.isArray(messages) ? messages[0] : String(messages));
-      });
-      return;
-    }
-    setStatus(getApiErrorMessage(error)); // show above the form
-  } finally {
-    setSubmitting(false);
-  }
-}, */
 
 
   const formik = useFormik({
@@ -117,44 +95,11 @@ const [documents,setDocuments] = useState([]);
  const [isUploading, setIsUploading] = useState(null);
 
  // uploading documents 
- const handleonDragOver = (e) => {
-  e.preventDefault();
-  setIsDragging(false);
-}
-
-const handleonDragLeave = (e) => {
-  e.preventDefault();
-  setIsDragging(true);
-}
-
+ 
 const handleFile = (addedFile) => {
   if (!addedFile) return;
   setFile(addedFile);
 }
-
-
-const handleDragOver = (e) => {
-  e.preventDefault();
-  setIsDragging(true);
-};
-const handleDragLeave = () => {
-  setIsDragging(false);
-};
-
-const handleDrop = (e) => {
-  e.preventDefault();
-  setIsDragging(false);
-  const droppedFile = e.dataTransfer.files?.[0];
-  handleFile(droppedFile);
-};
-
-const handleBrowseClick = () => {
-  inputRef.current?.click();
-};
-const handleInputChange = (e) => {
-  const selectedFile = e.target.files?.[0];
-  handleFile(selectedFile);
-};
 
 const handleUpload = async () => {
   if (!file) {
@@ -313,41 +258,8 @@ const handleUpload = async () => {
 
 
 
+<DragAndDropFileUpload patientId={patientId} recordId = {returnedRecordId} file={file} handleFile={handleFile} onUpload={handleUpload}/>
 
-      <div className="upload-section">
-        <div
-          className={`drop-zone ${isDragging ? "drop-zone--active" : ""}`}
-          onClick={handleBrowseClick}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-        >
-          <input
-            ref={inputRef}
-            type="file"
-            className="drop-zone__input"
-            onChange={handleInputChange}
-          />
-          <p className="drop-zone__text">
-            {file
-              ? `Selected: ${file.name}`
-              : "Drag & drop a file here, or click to browse"}
-          </p>
-          {file && (
-            <p className="drop-zone__meta">
-              {(file.size / 1024).toFixed(1)} KB
-            </p>
-          )}
-        </div>
-        <button
-          type="button"
-          className="upload-btn"
-          onClick={handleUpload}
-          disabled={!file || isUploading}
-        >
-          {isUploading ? "Uploading..." : "Upload"}
-        </button>
-      </div>
     
 
       
