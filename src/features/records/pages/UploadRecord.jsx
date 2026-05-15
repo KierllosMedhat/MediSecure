@@ -189,7 +189,7 @@ const handleUpload = async () => {
     //await recordsApi.uploadDocument(returnedRecordId,formData);
 
     await new Promise((resolve) => setTimeout(resolve, 800)); // demo delay
-    alert(`Upload success: ${file.name} has been uploaded to record ${returnedRecordId}`);
+    alert(`Upload success: ${file.name} has been uploaded to record ${returnedRecordId }`);
   } catch (error) {
     console.error(error);
     alert("Upload failed.");
