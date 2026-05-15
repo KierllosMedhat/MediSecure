@@ -87,7 +87,7 @@ function App() {
             path="/patients/:id/records/:recordId"
             element={<RecordDetail />}
           />
-          <Route path="/records/upload" element={<UploadRecord />} />
+          <Route path="/patients/:id/records/upload" element={<UploadRecord />} />
 
           {/* Consent */}
           <Route

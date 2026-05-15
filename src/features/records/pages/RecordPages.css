@@ -4,3 +4,457 @@
 /* TODO: Add record detail styles (header, content, documents) */
 /* TODO: Add upload zone styles (drag-and-drop area) */
 /* TODO: Add consent-denied fallback styles */
+
+/* .record-header__top {
+     display:flex;
+      align-items:center; 
+      gap:12px; 
+      margin-left:auto;
+    }
+
+    /* RecordPages.css */
+.records-page--center {
+    min-height: calc(100vh - 120px); /* adjust if you have navbar/footer */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  
+  .error-card {
+    width: min(560px, 100%);
+    text-align: center;
+    padding: 24px;
+  }
+  
+  .error-card__title {
+    margin: 0 0 8px;
+    color: #b42318; /* error tone */
+  }
+  
+  .error-card__message {
+    margin: 0 0 16px;
+    color: #475467;
+  }
+  
+  .error-card__actions {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  } */
+
+
+
+  /* Records pages shared styles — Owner: Fadi */
+
+/* ===== Design Tokens (matched to provided wireframes) ===== */
+:root {
+  --records-bg: #f5f8fb;
+  --records-card: #ffffff;
+  --records-text: #1f2937;
+  --records-muted: #6b7280;
+  --records-line: #e5e7eb;
+  --records-primary: #2563eb;
+  --records-primary-soft: #eff6ff;
+  --records-danger: #d92d20;
+  --records-danger-soft: #fef3f2;
+  --records-shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
+  --records-radius: 12px;
+}
+
+/* ===== Base page ===== */
+.records-page {
+  background: var(--records-bg);
+  min-height: 100%;
+  padding: 20px;
+  display: grid;
+  gap: 16px;
+}
+
+.page-header {
+  display: grid;
+  gap: 4px;
+}
+
+.page-title {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.2;
+  font-weight: 700;
+  color: var(--records-text);
+}
+
+.page-subtitle {
+  margin: 0;
+  font-size: 14px;
+  color: var(--records-muted);
+}
+
+/* ===== TODO: Filter bar styles ===== */
+/* Works with your current plain select/input + Filter button */
+.records-page > #record-type,
+.records-page > #from-date {
+  height: 40px;
+  border: 1px solid var(--records-line);
+  border-radius: 10px;
+  padding: 0 12px;
+  font-size: 14px;
+  color: var(--records-text);
+  background: #fff;
+  outline: none;
+}
+
+.records-page > #record-type:focus,
+.records-page > #from-date:focus {
+  border-color: var(--records-primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+/* If your Button renders a native button in flow */
+.records-page > button {
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid var(--records-line);
+  background: #fff;
+  color: var(--records-text);
+  padding: 0 14px;
+  cursor: pointer;
+}
+
+/* Optional future wrapper class for better filter layout */
+.records-filter-bar {
+  display: grid;
+  grid-template-columns: 220px 180px auto;
+  gap: 10px;
+  align-items: end;
+  background: var(--records-card);
+  border: 1px solid var(--records-line);
+  border-radius: var(--records-radius);
+  padding: 12px;
+  box-shadow: var(--records-shadow);
+}
+
+/* ===== TODO: Record detail styles (header/content/documents) ===== */
+.record-header,
+.record-header-row {
+  background: var(--records-card);
+  border: 1px solid var(--records-line);
+  border-radius: var(--records-radius);
+  padding: 12px 14px;
+  display: grid;
+  grid-template-columns: 1.8fr 1fr 1.1fr 1.1fr;
+  gap: 10px;
+  align-items: center;
+}
+.col.created-at {
+  margin-left: 12px;
+}
+
+.record-header {
+  color: var(--records-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.record-header-row {
+  color: var(--records-text);
+  box-shadow: var(--records-shadow);
+}
+
+.col.title {
+  font-weight: 600;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.col.type {
+  white-space: nowrap;
+  /* margin-left: 12px; */
+}
+.col.created-by,
+.col.created-at {
+  white-space: nowrap;
+}
+
+/* top row helper you already use */
+.record-header__top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+}
+
+/* Documents card/list like wireframe list tiles */
+.record-documents {
+  background: var(--records-card);
+  border: 1px solid var(--records-line);
+  border-radius: var(--records-radius);
+  box-shadow: var(--records-shadow);
+  padding: 14px;
+}
+
+.record-documents h3 {
+  margin: 0 0 12px;
+  font-size: 16px;
+  color: var(--records-text);
+}
+
+.documents-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.document-item {
+  border: 1px solid var(--records-line);
+  border-radius: 10px;
+  background: #fff;
+  padding: 12px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.document-info {
+  display: grid;
+  gap: 4px;
+}
+
+.document-info > div {
+  color: var(--records-muted);
+  font-size: 13px;
+}
+
+.document-info strong {
+  color: var(--records-text);
+  font-size: 14px;
+}
+
+/* ===== TODO: Upload zone styles (drag-and-drop area) ===== */
+.upload-zone {
+  border: 1.5px dashed #9ca3af;
+  border-radius: var(--records-radius);
+  background: #fbfdff;
+  padding: 24px;
+  text-align: center;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.upload-zone:hover,
+.upload-zone--active {
+  border-color: var(--records-primary);
+  background: var(--records-primary-soft);
+}
+
+.upload-zone__title {
+  margin: 0 0 6px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--records-text);
+}
+
+.upload-zone__hint {
+  margin: 0;
+  font-size: 13px;
+  color: var(--records-muted);
+}
+
+/* ===== TODO: Consent denied fallback styles ===== */
+.records-page--center {
+  min-height: calc(100vh - 120px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.error-card {
+  width: min(560px, 100%);
+  border: 1px solid #fecdca;
+  background: var(--records-danger-soft);
+  border-radius: var(--records-radius);
+  text-align: center;
+  padding: 24px;
+}
+
+.error-card__title {
+  margin: 0 0 8px;
+  color: var(--records-danger);
+}
+
+.error-card__message {
+  margin: 0 0 16px;
+  color: #475467;
+}
+
+.error-card__actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 920px) {
+  .record-header,
+  .record-header-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .document-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .records-filter-bar {
+    grid-template-columns: 1fr;
+  }
+}
+.upload-section {
+  max-width: 420px;
+  margin: 20px auto;
+  font-family: Arial, sans-serif;
+}
+
+.drop-zone {
+  border: 2px dashed #9ca3af;
+  background-color: #f9fafb;
+  border-radius: 10px;
+  padding: 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.drop-zone--active {
+  border-color: #2563eb;
+  background-color: #eff6ff;
+}
+
+.drop-zone__input {
+  display: none;
+}
+
+.drop-zone__text {
+  margin: 0;
+  color: #1f2937;
+  font-size: 14px;
+}
+
+.drop-zone__meta {
+  margin-top: 8px;
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.upload-btn {
+  width: 100%;
+  margin-top: 12px;
+  padding: 10px 14px;
+  border: none;
+  border-radius: 8px;
+  background-color: #2563eb;
+  color: #ffffff;
+  font-size: 14px;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.upload-btn:hover:not(:disabled) {
+  background-color: #1d4ed8;
+}
+
+.upload-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.record-form {
+  max-width: 32rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.record-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.record-form__label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.record-form__input,
+.record-form__textarea,
+.record-form__select {
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  font-size: 1rem;
+  line-height: 1.4;
+  border: 1px solid #c9cdd4;
+  border-radius: 8px;
+  background: #fff;
+  color: #1a1a1a;
+  box-sizing: border-box;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.record-form__textarea {
+  resize: vertical;
+  min-height: 6rem;
+}
+
+.record-form__input:focus,
+.record-form__textarea:focus,
+.record-form__select:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+}
+
+.record-form__input--error {
+  border-color: #dc2626;
+}
+
+.record-form__input--error:focus {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.2);
+}
+
+.record-form__error {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: #dc2626;
+}
+
+.record-form__submit {
+  align-self: flex-start;
+  padding: 0.65rem 1.25rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #fff;
+  background: #2563eb;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s ease, opacity 0.15s ease;
+}
+
+.record-form__submit:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.record-form__submit:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
