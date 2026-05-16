@@ -309,7 +309,7 @@ Created At
       <DataTable columns={columns} data={[record]} emptyMessage={emptyMessage} />
 
       {/* TODO: Document attachments list with download buttons */}
-      <DocumentSection documents={documents} docError={docError} handleDownload={handleDownload} />
+      <DocumentSection documents={documents} docError={docError} downloadable={true} handleDownload={handleDownload} />
 
       <DragAndDropFileUpload patientId={patientId} recordId = {recordId} file={file} handleFile={handleFile} onUpload={handleUpload}/>
 

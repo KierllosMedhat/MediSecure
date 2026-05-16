@@ -76,11 +76,13 @@ const retrieveRecords = async (filters={}) => {
 
 function getUserIdFromStorage() {
   try {
-    const raw = localStorage.getItem('user');
+    const raw = sessionStorage.getItem('user');
     if (!raw) return null;
 
-    const user = JSON.parse(raw);
-    return user?.id ?? user?.User_Id ?? null; // supports either naming
+    // const user = JSON.parse(raw);
+    // return user?.id ?? user?.User_Id ?? null; // supports either naming
+
+    return 1; // dummy for now
   } catch {
     return null;
   }

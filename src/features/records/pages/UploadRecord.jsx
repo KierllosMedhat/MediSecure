@@ -21,7 +21,9 @@ import { useState,useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useFormik,Formik, Form, Field, ErrorMessage } from 'formik';
 import DragAndDropFileUpload from '../components/DragAndDropFileUpload';
+import DocumentSection from '../components/DocumentSection';
 import * as Yup from 'yup';
+import { mergeConfig } from 'axios';
 export default function UploadRecord() {
   const { id: patientId} = useParams();
   const navigate = useNavigate();
@@ -49,6 +51,12 @@ const [returnedRecordId,setReturnedRecordId] = useState(null);
         'Please select a record type'
       )
       .required('Record type is required'),
+    files: Yup.array()
+      .min(1, 'At least one file is required')
+      .max(5, 'You can upload up to 5 files')
+      .test('fileSize', 'Each file must be under 5MB', files =>
+        !files || files.every(f => f.size <= 5 * 1024 * 1024)
+      ),
   });
 
   
@@ -58,7 +66,8 @@ const [returnedRecordId,setReturnedRecordId] = useState(null);
     initialValues: {
       title: "",
       description: "",
-      record_type: ""
+      record_type: "",
+      files:[],
     },
     onSubmit: (values, { setSubmitting }) => {
       dummySubmit(values);
@@ -81,46 +90,99 @@ const [returnedRecordId,setReturnedRecordId] = useState(null);
       description: values.description,
     });
     setReturnedRecordId(data.recordId);
+
+    if(returnedRecordId){
+     try{
+for (const rawfile of rawfiles){
+  //await recordsApi.uploadDocument(returnedRecordId,rawfile);
+}
+await new Promise((resolve) => setTimeout(resolve, 800)); // demo delay
+alert(`Upload success: ${files.length} files have been uploaded to record ${returnedRecordId }`);
+
+     }catch (error) {
+      console.error(error);
+      alert("Upload failed.");
+      
+    } finally {
+      setIsUploading(false);
+      formik.setFieldValue('files', []);
+    }
+
+
+    }else {
+      alert("could not create record");
+      return;
+    }
     return data; 
   };
 
 // uploading document handling
 
 const [documents,setDocuments] = useState([]); 
+const [docError,setDocError] = useState(null);
+const [nextDocID,setNextDocID] = useState(9104);
+const [rawfiles,SetRawFiles] = useState([]);
 
  // drag and drop states
  const [file, setFile] = useState(null);
- const [isDragging, setIsDragging] = useState(null);
- const inputRef = useRef();
- const [isUploading, setIsUploading] = useState(null);
+ 
 
  // uploading documents 
  
 const handleFile = (addedFile) => {
+
   if (!addedFile) return;
-  setFile(addedFile);
+
+// const fileCollection = formik.values.files;
+
+const isPresent = rawfiles.some(f=>f.name=== addedFile.name && f.size===addedFile.size)
+
+if(!isPresent){
+ setFile(addedFile);
+}
 }
 
+// const onFileChange = (incomingFiles)=>{
+// const newFiles = Array.from(incomingFiles);
+// const current = formik.values.files;
+
+// const merged = [...current];
+
+// newFiles.forEach(newFile => {
+//   const isDuplicate = merged.some(
+//     f => f.name === newFile.name && f.size === newFile.size
+//   );
+//   if (!isDuplicate) merged.push(newFile);
+// });
+
+// formik.setFieldValue('files',merged);
+// formik.setFieldTouched('files',true);
+
+// }
+
+// const removeFile = (index) => {
+//   const updated = formik.values.files.filter((_, i) => i !== index);
+//   formik.setFieldValue('files', updated);
+// };
+
 const handleUpload = async () => {
+
+  
   if (!file) {
     alert("File was not uploaded try agian");
     return;
-  }else if(!returnedRecordId){
-  alert("Patient's record was not created yet");
-  return;
   }
-
-  try {
-
-
+ 
     const formData = new FormData();
     formData.append("file", file);
 
+    SetRawFiles([...rawfiles,formData]);
+
     const newDocument = {
-      document_idd: nextDocID,
-      record_id: returnedRecordId,
+      document_id: nextDocID,
+      record_id: 102,
       file_name: file.name,
-      file_path: `/uploads/records/${returnedRecordId}/${file.name}.${file.type}`,
+      file_path: `/uploads/records/102/${file.name}.${file.type}`,
       file_type: file.type,
       file_size: file.size,
       uploaded_By: patientId,
@@ -131,19 +193,12 @@ const handleUpload = async () => {
     //add to documents
     setDocuments([...documents, newDocument]);
     setNextDocID(nextDocID + 1);
-    //await recordsApi.uploadDocument(returnedRecordId,formData);
-
-    await new Promise((resolve) => setTimeout(resolve, 800)); // demo delay
-    alert(`Upload success: ${file.name} has been uploaded to record ${returnedRecordId }`);
-  } catch (error) {
-    console.error(error);
-    alert("Upload failed.");
-  } finally {
-    setIsUploading(false);
-    setFile(null);
+    
   }
+    
+  
 
-}
+
 
 
 
@@ -244,7 +299,11 @@ const handleUpload = async () => {
       </p>
     ) : null}
   </div>
+  <DocumentSection documents={documents} docError={docError} downloadable={false} />
 
+  <DragAndDropFileUpload patientId={patientId} recordId = {returnedRecordId} file={file} handleFile={handleFile} onUpload={handleUpload}/>
+
+  
   <button
     type="submit"
     className="record-form__submit"
@@ -258,9 +317,7 @@ const handleUpload = async () => {
 
 
 
-<DragAndDropFileUpload patientId={patientId} recordId = {returnedRecordId} file={file} handleFile={handleFile} onUpload={handleUpload}/>
-
-    
+  
 
       
     

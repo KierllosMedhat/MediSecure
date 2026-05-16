@@ -2,10 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, Button, StatusBadge, DataTable } from '../../../components/ui';
 import '../pages/RecordPages.css';
-export default function DocumentSection(props) {
-    const documents = props.documents;
+export default function DocumentSection({documents,docError,downloadable,handleDownload}) {
+    
     const docListRef = useRef(null);
-    if (props.docError) {
+    if (docError) {
       return (
         <p> could not retreive documents</p>
       );
@@ -25,10 +25,13 @@ export default function DocumentSection(props) {
                   <div>Type: {doc.file_type || 'N/A'}</div>
   
                 </div>
-  
+  { downloadable ?
                 <Button onClick={() => props.handleDownload(doc.Document_Id, doc.file_name)}>
                   Download
                 </Button>
+                :
+                <></>
+}
               </li>
             ))}
           </ul>
