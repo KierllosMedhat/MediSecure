@@ -104,8 +104,9 @@ alert(`Upload success: ${files.length} files have been uploaded to record ${retu
       alert("Upload failed.");
       
     } finally {
-      setIsUploading(false);
+      
       formik.setFieldValue('files', []);
+      
     }
 
 
@@ -135,7 +136,7 @@ const handleFile = (addedFile) => {
 
 // const fileCollection = formik.values.files;
 
-const isPresent = rawfiles.some(f=>f.name=== addedFile.name && f.size===addedFile.size)
+const isPresent = rawfiles.some(f=>f.name== addedFile.name && f.size==addedFile.size)
 
 if(!isPresent){
  setFile(addedFile);
@@ -194,6 +195,8 @@ const handleUpload = async () => {
     setDocuments([...documents, newDocument]);
     setNextDocID(nextDocID + 1);
     
+
+    setFile(null);
   }
     
   

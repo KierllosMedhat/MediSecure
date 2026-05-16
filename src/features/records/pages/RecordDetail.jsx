@@ -158,7 +158,7 @@ export default function RecordDetail() {
       console.error(error);
       alert("Upload failed.");
     } finally {
-      setIsUploading(false);
+      
       setFile(null);
     }
 

@@ -9,8 +9,7 @@ export default function DragAndDropFileUpload({patientId,recordId,file,handleFil
     const [isDragging, setIsDragging] = useState(null);
     const inputRef = useRef();
     const [isUploading, setIsUploading] = useState(null);
-    //dummy data for trial
-    const [nextDocID, setNextDocID] = useState(9104);
+    
 
     const handleonDragOver = (e) => {
         e.preventDefault();
@@ -45,6 +44,10 @@ export default function DragAndDropFileUpload({patientId,recordId,file,handleFil
         handleFile(selectedFile);
       };
 
+      const handleUpload=(e)=>{
+        onUpload();
+        setIsUploading(false);
+      }
 
       return(
         <div className="upload-section">
@@ -75,7 +78,7 @@ export default function DragAndDropFileUpload({patientId,recordId,file,handleFil
         <button
           type="button"
           className="upload-btn"
-          onClick={onUpload}
+          onClick={handleUpload}
           disabled={!file || isUploading}
         >
           {isUploading ? "Uploading..." : "Upload"}
