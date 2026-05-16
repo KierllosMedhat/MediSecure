@@ -1,3 +1,190 @@
 /* Notification pages styles — Owner: Kyrillos */
-/* TODO: Add notification list styles */
-/* TODO: Add unread indicator styles */
+
+/* ===== Page Layout ===== */
+.notifications-page .page-header {
+  margin-bottom: var(--space-6);
+}
+
+.notifications-page .page-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+/* ===== Notification List ===== */
+.notification-list {
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  animation: fadeInUp 0.4s ease-out;
+}
+
+.notification-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--color-border-light);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  position: relative;
+}
+
+.notification-item:last-child {
+  border-bottom: none;
+}
+
+.notification-item:hover {
+  background: var(--color-surface-hover);
+}
+
+/* Unread indicator */
+.notification-item--unread {
+  background: var(--color-primary-50);
+}
+
+.notification-item--unread:hover {
+  background: var(--color-primary-100);
+}
+
+.notification-item--unread::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--color-primary);
+  border-radius: 0 2px 2px 0;
+}
+
+/* Notification icon */
+.notification-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+  flex-shrink: 0;
+}
+
+.notification-icon--appointment {
+  background: var(--color-primary-100);
+  color: var(--color-primary);
+}
+
+.notification-icon--payment {
+  background: var(--color-success-light);
+  color: var(--color-success);
+}
+
+.notification-icon--record {
+  background: var(--color-info-light);
+  color: var(--color-info);
+}
+
+.notification-icon--consent {
+  background: var(--color-warning-light);
+  color: var(--color-warning);
+}
+
+.notification-icon--system {
+  background: var(--color-bg-secondary);
+  color: var(--color-text-muted);
+}
+
+.notification-icon--alert {
+  background: var(--color-danger-light);
+  color: var(--color-danger);
+}
+
+/* Content */
+.notification-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.notification-subject {
+  display: block;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  margin-bottom: 2px;
+}
+
+.notification-item--unread .notification-subject {
+  font-weight: var(--font-weight-bold);
+}
+
+.notification-body {
+  display: block;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-normal);
+  margin-bottom: var(--space-1);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.notification-time {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+/* Read indicator dot */
+.notification-unread-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  flex-shrink: 0;
+  margin-top: var(--space-2);
+  animation: pulse 2s infinite;
+}
+
+/* Empty state */
+.notification-empty {
+  text-align: center;
+  padding: var(--space-12) var(--space-6);
+  color: var(--color-text-muted);
+  animation: fadeInUp 0.4s ease-out;
+}
+
+.notification-empty__icon {
+  font-size: 3rem;
+  margin-bottom: var(--space-4);
+  opacity: 0.4;
+}
+
+.notification-empty__text {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  margin-bottom: var(--space-1);
+}
+
+.notification-empty__sub {
+  font-size: var(--font-size-sm);
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 640px) {
+  .notification-item {
+    padding: var(--space-3) var(--space-4);
+    gap: var(--space-3);
+  }
+
+  .notification-icon {
+    width: 36px;
+    height: 36px;
+    font-size: 1rem;
+  }
+}

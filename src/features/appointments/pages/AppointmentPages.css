@@ -1,3 +1,251 @@
 /* Appointment pages styles — Owner: Kyrillos */
-/* TODO: Add appointment form styles */
-/* TODO: Add cancel modal styles */
+
+/* ===== Shared layout ===== */
+.appointments-page .page-header {
+  margin-bottom: var(--space-6);
+}
+
+.appointments-page .page-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+/* ===== Filter Bar ===== */
+.appt-filter-bar {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  padding: var(--space-4) var(--space-5);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-5);
+  animation: fadeInUp 0.3s ease-out;
+}
+
+.appt-filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 160px;
+}
+
+.appt-filter-field label {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.appt-filter-field select,
+.appt-filter-field input {
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  outline: none;
+  cursor: pointer;
+}
+
+.appt-filter-field select:focus,
+.appt-filter-field input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-100);
+}
+
+.appt-filter-actions {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-end;
+}
+
+/* ===== Appointment Form ===== */
+.appt-form-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  animation: fadeInUp 0.4s ease-out;
+}
+
+.appt-form-body {
+  padding: var(--space-6);
+}
+
+.appt-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+.appt-form-full {
+  grid-column: 1 / -1;
+}
+
+.appt-form-select {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  outline: none;
+  cursor: pointer;
+  appearance: auto;
+}
+
+.appt-form-select:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-100);
+}
+
+.appt-form-textarea {
+  width: 100%;
+  min-height: 80px;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--font-size-sm);
+  font-family: var(--font-family);
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  resize: vertical;
+  outline: none;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.appt-form-textarea:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-100);
+}
+
+.appt-form-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  padding: var(--space-5) var(--space-6);
+  border-top: 1px solid var(--color-border);
+  background: var(--color-bg-secondary);
+}
+
+/* Cancel action in table */
+.appt-cancel-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-danger);
+  background: var(--color-danger-light);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.appt-cancel-btn:hover {
+  background: var(--color-danger);
+  color: white;
+}
+
+.appt-cancel-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Cancel modal body */
+.cancel-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.cancel-modal-body p {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-normal);
+}
+
+.cancel-modal-body textarea {
+  width: 100%;
+  min-height: 100px;
+  padding: var(--space-3);
+  font-size: var(--font-size-sm);
+  font-family: var(--font-family);
+  color: var(--color-text-primary);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  resize: vertical;
+  outline: none;
+  transition: border-color var(--transition-fast);
+}
+
+.cancel-modal-body textarea:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-100);
+}
+
+.cancel-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+/* Alert message */
+.appt-alert {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  margin-bottom: var(--space-5);
+  animation: fadeInUp 0.3s ease-out;
+}
+
+.appt-alert--success {
+  background: var(--color-success-light);
+  color: #065f46;
+  border: 1px solid var(--color-success);
+}
+
+.appt-alert--error {
+  background: var(--color-danger-light);
+  color: #991b1b;
+  border: 1px solid var(--color-danger);
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 768px) {
+  .appt-filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .appt-filter-field {
+    min-width: unset;
+  }
+
+  .appt-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .appt-form-actions {
+    flex-direction: column;
+  }
+}
