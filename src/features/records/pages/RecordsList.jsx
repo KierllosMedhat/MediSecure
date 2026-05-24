@@ -23,9 +23,9 @@ import { useNavigate } from 'react-router-dom';
 
 import { useState,useEffect } from 'react';
 export default function RecordsList() {
-  const { id: patientId } = useParams();
+  //const { id: patientId } = useParams();
   const navigate = useNavigate();
-
+const [patientId,setPatientId] = useState(null);
   // dummy data for testing
 const DUMMY_PATIENT_ID = "1";
 
@@ -46,11 +46,28 @@ const DUMMY_RECORDS_FOR_PATIENT_1 = [
   },
 ];
 
+const DUMMY_RECORDS_FOR_PATIENT_2 = [
+  {
+    record_id: 101,
+    title: "CBC - MAY 2026",
+    record_type: "LAB_RESULT",
+    created_by: "Dr. Sara Ahmed",
+    created_at: "2026-05-24T10:30:00Z",
+  },
+  {
+    record_id: 102,
+    title: "Leg X-Ray - Follow up",
+    record_type: "IMAGING",
+    created_by: "Dr. Omar Hassan",
+    created_at: "2026-05-24T14:10:00Z",
+  },
+];
+
   
 const [records,setRecords] = useState(null);
 
 const [recordType,setRecordType] = useState('all');
-const [fromDate,setFromDate] = useState('1-1-1970');
+const [fromDate,setFromDate] = useState('2026-01-01');
 
 const [emptyMessage,setEmptyMessage] = useState('No records found.');
 
@@ -79,15 +96,33 @@ function getUserIdFromStorage() {
     const raw = sessionStorage.getItem('user');
     if (!raw) return null;
 
-    // const user = JSON.parse(raw);
-    // return user?.id ?? user?.User_Id ?? null; // supports either naming
+    const user = JSON.parse(raw);
 
-    return 1; // dummy for now
+    if(user.id){
+      return user.id;
+    }
+    return null; // supports either naming
+
+    //return 1; // dummy for now
   } catch {
     return null;
   }
 }
 
+
+//setting initial id
+useEffect(()=>{
+ const currentUserID = getUserIdFromStorage();
+
+ if(currentUserID){
+  setPatientId(currentUserID);
+  return;
+ }else{
+setPatientId(1);//dummyid
+ }
+return;
+}
+  ,[])
 
 
 
@@ -96,25 +131,19 @@ useEffect(() => {
   if(Number(patientId) === 1){
     setRecords(DUMMY_RECORDS_FOR_PATIENT_1);
     return;
-  } else if (patientId === "me"){
-    const currentID = getUserIdFromStorage();
-    if(!currentID){
-      return;
-    } else {
-      if(currentID === 1){
-        setRecords(DUMMY_RECORDS_FOR_PATIENT_1);
-    return;
-      }
-    }
+  } else if (Number(patientId) === 2){
+    setRecords(DUMMY_RECORDS_FOR_PATIENT_2)
+  }else {
+    setRecords(DUMMY_RECORDS_FOR_PATIENT_2)
   }
   //retrieveRecords();
-}, []);
+}, [patientId]);
 
  const handleFilter = (filters) => {
   retrieveRecords(filters);
  }
  const handleRowClick = (record) => {
-  navigate(`/patients/${patientId}/records/${record.record_id}`);
+  navigate(`/patients/me/records/${record.record_id}`);
  }
 
  //prepare columns

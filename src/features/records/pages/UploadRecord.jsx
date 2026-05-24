@@ -16,9 +16,9 @@
  * - Navigate back on success
  */
 import { Card, Button, Input } from '../../../components/ui';
-import patientApi from '../../../api/services/patientService';
+
 import './RecordPages.css';
-import { useState,useRef } from 'react';
+import { useState,useRef,useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useFormik,Formik, Form, Field, ErrorMessage } from 'formik';
 import DragAndDropFileUpload from '../components/DragAndDropFileUpload';
@@ -27,7 +27,37 @@ import * as Yup from 'yup';
 import { mergeConfig } from 'axios';
 export default function UploadRecord() {
   //const { id: patientId} = useParams();
-  const patientId = 1;
+  //const patientId = 1;
+  // user data retreival
+const [patientId,setPatientId] = useState(null);
+
+function getUserIdFromStorage() {
+  try {
+    const raw = sessionStorage.getItem('user');
+    if (!raw) return null;
+
+    const user = JSON.parse(raw);
+    return user?.id ?? user?.User_Id ?? user?.ID ?? null; // supports either naming
+
+    //return 1; // dummy for now
+  } catch {
+    return null;
+  }
+}
+useEffect(()=>{
+const currentUserID = getUserIdFromStorage();
+
+if(currentUserID){
+  setPatientId(currentUserID);
+  return;
+}
+else{
+  setPatientId(1); // dummyid
+}
+return
+},[])
+
+
   const navigate = useNavigate();
 const [returnedRecordId,setReturnedRecordId] = useState(null);
   const RECORD_TYPES = [

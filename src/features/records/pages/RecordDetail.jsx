@@ -286,7 +286,7 @@ export default function RecordDetail() {
   return (
     <div className="records-page">
       {/* TODO: Back link */}
-      <Button onClick={() => navigate(`/patients/${patientId}/records`)}>Back</Button>
+      <Button onClick={() => navigate('/patients/me/records')}>Back</Button>
 
       {/* TODO: MedicalRecord header (Title, Created_by, created_at, Record_type badge) */}
       {/* <Card className="record-header">
