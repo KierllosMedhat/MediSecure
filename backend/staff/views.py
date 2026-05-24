@@ -1,19 +1,15 @@
 """
-Staff Views — Owner: Kyrillos
-
-API views for staff CRUD and dashboard.
-
-Views are aligned to frontend staffService.js:
-  GET/POST  /staff              → StaffListCreateView
-  GET/PUT   /staff/<id>         → StaffDetailView
-  PATCH     /staff/<id>/deactivate → StaffDeactivateView
-  GET       /staff/dashboard    → StaffDashboardView
+Staff Views — Implemented by Kyrillos
 """
+
+from django.utils import timezone
 
 from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.filters import SearchFilter, OrderingFilter
 
 from core.permissions import IsAdmin, IsStaffMember
 
@@ -26,22 +22,20 @@ from .serializers import (
 )
 
 
-# ──────────────────────────────────────────────────────
-# TODO (Kyrillos): Implement StaffListCreateView
-#   - GET  /api/v1/staff   → list all staff members
-#   - POST /api/v1/staff   → create a new staff member
-#   - Frontend GET params: { role, department, status, hospital_id }
-#   - Frontend POST body:  { email, first_name, middle_name, last_name,
-#                            phone_number, role, hospital_id, department,
-#                            license_no, address }
-#   - Filter by: department, hospital, role, is_active
-#   - Search by: name, email, license_no
-#   - GET permission: IsAuthenticated + IsStaffMember
-#   - POST permission: IsAuthenticated + IsAdmin
-# ──────────────────────────────────────────────────────
 class StaffListCreateView(generics.ListCreateAPIView):
-    """List staff (GET) and create new staff member (POST)."""
-    permission_classes = [IsAuthenticated]
+    """
+    GET  /staff  — List all staff members (any authenticated staff).
+    POST /staff  — Create a new staff member (admin only).
+    """
+    permission_classes = [IsAuthenticated, IsStaffMember]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ["department", "hospital", "is_active"]
+    search_fields = [
+        "user__first_name", "user__last_name",
+        "user__email", "license_no",
+    ]
+    ordering_fields = ["hired_at", "department", "user__last_name"]
+    ordering = ["user__last_name"]
 
     def get_serializer_class(self):
         if self.request.method == "POST":
@@ -49,61 +43,124 @@ class StaffListCreateView(generics.ListCreateAPIView):
         return StaffListSerializer
 
     def get_queryset(self):
-        # TODO (Kyrillos): Return Staff.objects with select_related("user", "hospital")
-        # TODO (Kyrillos): Filter by role, department, hospital_id, is_active from query params
-        pass
+        qs = Staff.objects.select_related("user", "hospital").all()
+        # Filter by role via query param (?role=DOCTOR)
+        role = self.request.query_params.get("role")
+        if role:
+            qs = qs.filter(user__role=role)
+        return qs
 
-    def perform_create(self, serializer):
-        # TODO (Kyrillos): Create user + staff atomically, send welcome email
-        pass
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [IsAuthenticated(), IsAdmin()]
+        return [IsAuthenticated(), IsStaffMember()]
 
 
-# ──────────────────────────────────────────────────────
-# TODO (Kyrillos): Implement StaffDetailView
-#   - GET    /api/v1/staff/<id>  → retrieve staff detail (getStaffById)
-#   - PUT    /api/v1/staff/<id>  → update staff (updateStaff)
-#   - Permission: GET = IsStaffMember, PUT = IsAdmin
-# ──────────────────────────────────────────────────────
 class StaffDetailView(generics.RetrieveUpdateAPIView):
-    """Retrieve and update a staff member."""
+    """
+    GET  /staff/<id>  — Retrieve staff detail (any staff member).
+    PUT  /staff/<id>  — Update staff profile (admin only).
+    """
     serializer_class = StaffDetailSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsStaffMember]
 
     def get_queryset(self):
-        # TODO (Kyrillos): Return Staff with select_related
-        pass
+        return Staff.objects.select_related("user", "hospital").all()
+
+    def get_permissions(self):
+        if self.request.method in ("PUT", "PATCH"):
+            return [IsAuthenticated(), IsAdmin()]
+        return [IsAuthenticated(), IsStaffMember()]
 
 
-# ──────────────────────────────────────────────────────
-# TODO (Kyrillos): Implement StaffDeactivateView
-#   - PATCH /api/v1/staff/<id>/deactivate → soft-delete staff
-#   - Frontend: deactivateStaff(staffId) → PATCH /staff/<id>/deactivate
-#   - Sets is_active=False on Staff AND is_active=False on User
-#   - Returns 200 with updated staff data
-#   - Permission: IsAuthenticated + IsAdmin
-# ──────────────────────────────────────────────────────
 class StaffDeactivateView(APIView):
-    """Deactivate (soft-delete) a staff member."""
-    permission_classes = [IsAuthenticated]
+    """
+    PATCH /staff/<id>/deactivate  — Soft-delete a staff member (admin only).
+    Sets is_active=False on both Staff and User records.
+    """
+    permission_classes = [IsAuthenticated, IsAdmin]
 
     def patch(self, request, pk):
-        # TODO (Kyrillos): Get Staff by pk, set is_active=False on staff + user
-        # TODO (Kyrillos): Return Response with updated serializer data
-        pass
+        try:
+            staff = Staff.objects.select_related("user").get(pk=pk)
+        except Staff.DoesNotExist:
+            return Response(
+                {"detail": "Staff member not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if not staff.is_active:
+            return Response(
+                {"detail": "Staff member is already deactivated."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Soft-delete both records
+        staff.is_active = False
+        staff.save(update_fields=["is_active", "updated_at"])
+
+        staff.user.is_active = False
+        staff.user.save(update_fields=["is_active"])
+
+        return Response(
+            {"message": "Staff member deactivated successfully."},
+            status=status.HTTP_200_OK,
+        )
 
 
-# ──────────────────────────────────────────────────────
-# TODO (Kyrillos): Implement StaffDashboardView
-#   - GET /api/v1/staff/dashboard → dashboard stats for current staff
-#   - Aggregate: total_patients, today_appointments,
-#                pending_consents, recent_records
-#   - Permission: IsAuthenticated + IsStaffMember
-# ──────────────────────────────────────────────────────
 class StaffDashboardView(APIView):
-    """Dashboard statistics for the authenticated staff member."""
-    permission_classes = [IsAuthenticated]
+    """
+    GET /staff/dashboard  — Dashboard statistics for the authenticated staff member.
+    """
+    permission_classes = [IsAuthenticated, IsStaffMember]
 
     def get(self, request):
-        # TODO (Kyrillos): Get staff profile from request.user
-        # TODO (Kyrillos): Aggregate stats from related models
-        pass
+        try:
+            staff = Staff.objects.get(user=request.user)
+        except Staff.DoesNotExist:
+            return Response(
+                {"detail": "Staff profile not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        today = timezone.now().date()
+
+        # Count unique patients this staff member has appointments with
+        total_patients = (
+            staff.appointments
+            .values("patient")
+            .distinct()
+            .count()
+        )
+
+        # Count today's non-cancelled appointments
+        today_appointments = staff.appointments.filter(
+            scheduled_at__date=today,
+        ).exclude(
+            status__in=["CANCELLED", "NO_SHOW"]
+        ).count()
+
+        # Count active consents granted to this staff member
+        pending_consents = staff.consent_grants.filter(is_active=True).count()
+
+        # Last 5 medical records created by this staff member
+        from records.models import MedicalRecord
+        recent_records = list(
+            MedicalRecord.objects.filter(created_by=request.user)
+            .order_by("-created_at")
+            .values("id", "title", "record_type", "created_at")[:5]
+        )
+
+        # Convert datetimes to strings for JSON serialisation
+        for rec in recent_records:
+            rec["created_at"] = rec["created_at"].isoformat()
+
+        data = {
+            "total_patients": total_patients,
+            "today_appointments": today_appointments,
+            "pending_consents": pending_consents,
+            "recent_records": recent_records,
+        }
+
+        serializer = StaffDashboardSerializer(data)
+        return Response(serializer.data)

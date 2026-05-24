@@ -1,21 +1,21 @@
 """
-Staff Serializers — Owner: Kyrillos
-
-Serializers for staff CRUD and dashboard statistics.
+Staff Serializers — Implemented by Kyrillos
 """
 
+from django.contrib.auth import get_user_model
+from django.db import transaction
+from django.utils import timezone
+
 from rest_framework import serializers
+
 from .models import Staff
 
+User = get_user_model()
 
-# ──────────────────────────────────────────────────────
-# TODO (Kyrillos): Implement StaffListSerializer
-#   - Fields: id, user (nested: id, email, first_name, last_name, role),
-#             hospital_name, department, license_no, is_active, hired_at
-#   - Used for list views (lightweight)
-#   - Include hospital_name as computed field
-# ──────────────────────────────────────────────────────
+
 class StaffListSerializer(serializers.ModelSerializer):
+    """Lightweight serializer for staff list views."""
+
     full_name = serializers.SerializerMethodField()
     email = serializers.EmailField(source="user.email", read_only=True)
     role = serializers.CharField(source="user.role", read_only=True)
@@ -30,18 +30,14 @@ class StaffListSerializer(serializers.ModelSerializer):
         ]
 
     def get_full_name(self, obj):
-        # TODO (Kyrillos): Return user's full name
-        pass
+        u = obj.user
+        parts = [u.first_name, u.middle_name, u.last_name]
+        return " ".join(p for p in parts if p).strip() or u.email
 
 
-# ──────────────────────────────────────────────────────
-# TODO (Kyrillos): Implement StaffDetailSerializer
-#   - All Staff fields + nested user data + appointment count
-#   - Include address, created_at, updated_at
-#   - Include upcoming_appointments count
-#   - Used for detail/edit views
-# ──────────────────────────────────────────────────────
 class StaffDetailSerializer(serializers.ModelSerializer):
+    """Full serializer for staff detail and update views."""
+
     full_name = serializers.SerializerMethodField()
     email = serializers.EmailField(source="user.email", read_only=True)
     role = serializers.CharField(source="user.role", read_only=True)
@@ -59,28 +55,30 @@ class StaffDetailSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "user", "created_at", "updated_at"]
 
     def get_full_name(self, obj):
-        # TODO (Kyrillos): Return user's full name
-        pass
+        u = obj.user
+        parts = [u.first_name, u.middle_name, u.last_name]
+        return " ".join(p for p in parts if p).strip() or u.email
 
     def get_upcoming_appointments(self, obj):
-        # TODO (Kyrillos): Count future appointments for this staff member
-        pass
+        return obj.appointments.filter(
+            scheduled_at__gt=timezone.now(),
+            status__in=["SCHEDULED", "CONFIRMED"],
+        ).count()
 
 
-# ──────────────────────────────────────────────────────
-# TODO (Kyrillos): Implement StaffCreateSerializer
-#   - Fields for creating a new staff member:
-#     - User fields: email, password, first_name, last_name, role
-#     - Staff fields: hospital, department, license_no, address
-#   - Create both User and Staff in a single transaction
-#   - Validate role is a staff role (not PATIENT)
-#   - Validate license_no is provided for DOCTOR role
-# ──────────────────────────────────────────────────────
 class StaffCreateSerializer(serializers.ModelSerializer):
+    """
+    Serializer for creating a new staff member.
+    Creates a User + Staff profile in a single atomic transaction.
+    """
+
+    # User fields
     email = serializers.EmailField(write_only=True)
-    password = serializers.CharField(write_only=True)
+    password = serializers.CharField(write_only=True, min_length=8)
     first_name = serializers.CharField(write_only=True)
     last_name = serializers.CharField(write_only=True)
+    middle_name = serializers.CharField(write_only=True, required=False, allow_blank=True, default="")
+    phone_number = serializers.CharField(write_only=True, required=False, allow_blank=True, default="")
     role = serializers.ChoiceField(
         choices=["DOCTOR", "NURSE", "BILLING_STAFF", "ADMIN"],
         write_only=True,
@@ -89,31 +87,65 @@ class StaffCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Staff
         fields = [
-            "email", "password", "first_name", "last_name", "role",
+            "email", "password", "first_name", "middle_name", "last_name",
+            "phone_number", "role",
             "hospital", "department", "license_no", "address",
         ]
 
+    def validate_email(self, value):
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("A user with this email already exists.")
+        return value.lower()
+
     def validate(self, attrs):
-        # TODO (Kyrillos): Validate license_no required for DOCTOR
-        # TODO (Kyrillos): Validate email uniqueness
-        pass
+        # Doctors must have a license number
+        if attrs.get("role") == "DOCTOR" and not attrs.get("license_no", "").strip():
+            raise serializers.ValidationError({
+                "license_no": "License number is required for DOCTOR role."
+            })
+        return attrs
 
+    @transaction.atomic
     def create(self, validated_data):
-        # TODO (Kyrillos): Extract user fields, create User, then create Staff
-        # TODO (Kyrillos): Use transaction.atomic() for safety
-        pass
+        # Extract user-specific fields
+        user_fields = {
+            "email": validated_data.pop("email"),
+            "first_name": validated_data.pop("first_name"),
+            "last_name": validated_data.pop("last_name"),
+            "middle_name": validated_data.pop("middle_name", ""),
+            "phone_number": validated_data.pop("phone_number", ""),
+            "role": validated_data.pop("role"),
+        }
+        password = validated_data.pop("password")
+
+        # Generate a username from email (required by AbstractUser)
+        username = user_fields["email"].split("@")[0]
+        base_username = username
+        counter = 1
+        while User.objects.filter(username=username).exists():
+            username = f"{base_username}{counter}"
+            counter += 1
+
+        # Create the User
+        user = User.objects.create_user(
+            username=username,
+            password=password,
+            **user_fields,
+        )
+
+        # Create the Staff profile with remaining fields
+        staff = Staff.objects.create(user=user, **validated_data)
+        return staff
+
+    def to_representation(self, instance):
+        """Return full staff detail after creation."""
+        return StaffDetailSerializer(instance, context=self.context).data
 
 
-# ──────────────────────────────────────────────────────
-# TODO (Kyrillos): Implement StaffDashboardSerializer
-#   - Aggregate dashboard stats for the staff member:
-#     - total_patients: count of unique patients
-#     - today_appointments: count of today's appointments
-#     - pending_consents: count of pending consent requests
-#     - recent_records: last 5 medical records they created
-# ──────────────────────────────────────────────────────
 class StaffDashboardSerializer(serializers.Serializer):
-    total_patients = serializers.IntegerField(read_only=True)
-    today_appointments = serializers.IntegerField(read_only=True)
-    pending_consents = serializers.IntegerField(read_only=True)
-    recent_records = serializers.ListField(read_only=True)
+    """Read-only serializer for staff dashboard stats."""
+
+    total_patients = serializers.IntegerField()
+    today_appointments = serializers.IntegerField()
+    pending_consents = serializers.IntegerField()
+    recent_records = serializers.ListField(child=serializers.DictField())

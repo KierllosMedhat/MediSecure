@@ -1,101 +1,244 @@
 """
-Appointments Views — Owner: Kyrillos
-
-API views for appointment scheduling, listing, and status management.
+Appointments Views — Implemented by Kyrillos
 """
+
+from datetime import datetime, timedelta, time
+
+from django.utils import timezone
+from django.db.models import Q
 
 from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.filters import SearchFilter, OrderingFilter
+
+from core.permissions import IsStaffMember
 
 from .models import Appointment
 from .serializers import AppointmentSerializer, AppointmentStatusSerializer
 
 
-# ──────────────────────────────────────────────────────
-# TODO (Kyrillos): Implement AppointmentListCreateView
-#   - GET  /api/v1/appointments/ → list appointments
-#   - POST /api/v1/appointments/ → create a new appointment
-#   - Filter by: patient_id, staff_id, status, appointment_type, date range
-#   - Patients see only their own appointments
-#   - Staff see appointments assigned to them
-#   - Admin sees all appointments
-#   - Order by scheduled_at
-#   - Permission: IsAuthenticated
-# ──────────────────────────────────────────────────────
 class AppointmentListCreateView(generics.ListCreateAPIView):
-    """List and create appointments."""
+    """
+    GET  /appointments  — List appointments (role-filtered).
+    POST /appointments  — Create a new appointment.
+    """
     serializer_class = AppointmentSerializer
     permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ["status", "appointment_type"]
+    search_fields = [
+        "patient__user__first_name", "patient__user__last_name",
+        "staff__user__first_name", "notes",
+    ]
+    ordering_fields = ["scheduled_at", "status"]
+    ordering = ["scheduled_at"]
 
     def get_queryset(self):
-        # TODO (Kyrillos): Filter by role, patient_id, staff_id, status, type, dates
-        pass
+        user = self.request.user
+        qs = Appointment.objects.select_related(
+            "patient__user", "staff__user"
+        )
+
+        # Role-based filtering
+        if user.role == "PATIENT":
+            try:
+                qs = qs.filter(patient=user.patient_profile)
+            except Exception:
+                return Appointment.objects.none()
+        elif user.role in ("DOCTOR", "NURSE"):
+            try:
+                qs = qs.filter(staff=user.staff_profile)
+            except Exception:
+                return Appointment.objects.none()
+        # ADMIN and BILLING_STAFF see all appointments
+
+        # Optional query param filters
+        patient_id = self.request.query_params.get("patient_id")
+        staff_id = self.request.query_params.get("staff_id")
+        from_date = self.request.query_params.get("from_date")
+        to_date = self.request.query_params.get("to_date")
+
+        if patient_id:
+            qs = qs.filter(patient_id=patient_id)
+        if staff_id:
+            qs = qs.filter(staff_id=staff_id)
+        if from_date:
+            qs = qs.filter(scheduled_at__date__gte=from_date)
+        if to_date:
+            qs = qs.filter(scheduled_at__date__lte=to_date)
+
+        return qs
 
     def perform_create(self, serializer):
-        # TODO (Kyrillos): Auto-set patient from request.user if patient role
-        # TODO (Kyrillos): Send notification to staff and patient
-        pass
+        user = self.request.user
+        # If the requester is a patient, auto-set patient from their profile
+        if user.role == "PATIENT":
+            serializer.save(
+                patient=user.patient_profile,
+                status=Appointment.Status.SCHEDULED,
+            )
+        else:
+            serializer.save(status=Appointment.Status.SCHEDULED)
 
 
-# ──────────────────────────────────────────────────────
-# TODO (Kyrillos): Implement AppointmentDetailView
-#   - GET    /api/v1/appointments/<id>/ → retrieve appointment
-#   - PUT    /api/v1/appointments/<id>/ → update appointment
-#   - DELETE /api/v1/appointments/<id>/ → cancel appointment
-#   - On DELETE: set status=CANCELLED (don't hard delete)
-#   - Permission: IsAuthenticated + involved party or admin
-# ──────────────────────────────────────────────────────
 class AppointmentDetailView(generics.RetrieveUpdateDestroyAPIView):
-    """Retrieve, update, or cancel an appointment."""
+    """
+    GET    /appointments/<id>  — Retrieve appointment detail.
+    PUT    /appointments/<id>  — Update appointment.
+    PATCH  /appointments/<id>  — Partial update (e.g., cancel via frontend).
+    DELETE /appointments/<id>  — Soft-cancel the appointment.
+    """
     serializer_class = AppointmentSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        # TODO (Kyrillos): Return appointments visible to request.user
-        pass
+        user = self.request.user
+        qs = Appointment.objects.select_related("patient__user", "staff__user")
+
+        if user.role == "PATIENT":
+            try:
+                return qs.filter(patient=user.patient_profile)
+            except Exception:
+                return Appointment.objects.none()
+        elif user.role in ("DOCTOR", "NURSE"):
+            try:
+                return qs.filter(staff=user.staff_profile)
+            except Exception:
+                return Appointment.objects.none()
+        return qs
 
     def perform_destroy(self, instance):
-        # TODO (Kyrillos): Set status=CANCELLED instead of deleting
-        # TODO (Kyrillos): Send cancellation notification
-        pass
+        # Soft-cancel instead of hard delete
+        if instance.status in (
+            Appointment.Status.COMPLETED,
+            Appointment.Status.CANCELLED,
+        ):
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError(
+                f"Cannot cancel an appointment with status '{instance.status}'."
+            )
+        instance.status = Appointment.Status.CANCELLED
+        instance.save(update_fields=["status", "updated_at"])
 
 
-# ──────────────────────────────────────────────────────
-# TODO (Kyrillos): Implement AppointmentStatusView
-#   - PATCH /api/v1/appointments/<id>/status/ → update appointment status
-#   - Validate status transition rules
-#   - Send notifications on status change
-#   - Permission: IsAuthenticated + staff or admin
-# ──────────────────────────────────────────────────────
 class AppointmentStatusView(APIView):
-    """Update appointment status (confirm, start, complete, no-show)."""
-    permission_classes = [IsAuthenticated]
+    """
+    PATCH /appointments/<id>/status  — Update appointment status with transition rules.
+    """
+    permission_classes = [IsAuthenticated, IsStaffMember]
 
     def patch(self, request, pk):
-        # TODO (Kyrillos): Validate transition, update status
-        # TODO (Kyrillos): If CANCELLED, require cancelled_reason
-        # TODO (Kyrillos): Send notification on status change
-        pass
+        try:
+            appointment = Appointment.objects.select_related(
+                "patient__user", "staff__user"
+            ).get(pk=pk)
+        except Appointment.DoesNotExist:
+            return Response(
+                {"detail": "Appointment not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer = AppointmentStatusSerializer(
+            data=request.data,
+            context={"current_status": appointment.status},
+        )
+        serializer.is_valid(raise_exception=True)
+
+        new_status = serializer.validated_data["status"]
+        cancelled_reason = serializer.validated_data.get("cancelled_reason", "")
+
+        appointment.status = new_status
+        if cancelled_reason:
+            appointment.cancelled_reason = cancelled_reason
+
+        update_fields = ["status", "updated_at"]
+        if cancelled_reason:
+            update_fields.append("cancelled_reason")
+
+        appointment.save(update_fields=update_fields)
+
+        return Response(
+            AppointmentSerializer(appointment, context={"request": request}).data,
+            status=status.HTTP_200_OK,
+        )
 
 
-# ──────────────────────────────────────────────────────
-# TODO (Kyrillos): Implement AvailableSlotsView
-#   - GET /api/v1/appointments/available-slots/?staff_id=<id>&date=<date>
-#   - Return available time slots for a staff member on a given date
-#   - Exclude times that conflict with existing appointments
-#   - Default slot duration: 30 minutes
-#   - Working hours: 08:00–17:00 (configurable)
-#   - Permission: IsAuthenticated
-# ──────────────────────────────────────────────────────
 class AvailableSlotsView(APIView):
-    """Get available appointment slots for a staff member."""
+    """
+    GET /appointments/available-slots?staff_id=<id>&date=<YYYY-MM-DD>
+
+    Returns a list of available 30-minute time slots for a staff member on a date.
+    Working hours: 08:00–17:00. Slots that overlap existing appointments are excluded.
+    """
     permission_classes = [IsAuthenticated]
 
+    SLOT_DURATION = 30       # minutes
+    WORK_START    = time(8, 0)
+    WORK_END      = time(17, 0)
+
     def get(self, request):
-        # TODO (Kyrillos): Get staff_id and date from query params
-        # TODO (Kyrillos): Generate time slots for working hours
-        # TODO (Kyrillos): Exclude slots that conflict with existing appointments
-        # TODO (Kyrillos): Return list of available slot start times
-        pass
+        staff_id = request.query_params.get("staff_id")
+        date_str = request.query_params.get("date")
+
+        if not staff_id or not date_str:
+            return Response(
+                {"detail": "Both 'staff_id' and 'date' query parameters are required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            query_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+        except ValueError:
+            return Response(
+                {"detail": "Invalid date format. Use YYYY-MM-DD."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Fetch existing appointments for this staff on this date
+        existing = Appointment.objects.filter(
+            staff_id=staff_id,
+            scheduled_at__date=query_date,
+        ).exclude(
+            status__in=["CANCELLED", "NO_SHOW"]
+        ).values_list("scheduled_at", "duration_min")
+
+        # Build list of busy intervals (start, end) as naive times
+        busy = []
+        for appt_start, dur in existing:
+            appt_end = appt_start + timedelta(minutes=dur)
+            busy.append((appt_start.time(), appt_end.time()))
+
+        # Generate all slots within working hours
+        available = []
+        slot_start = datetime.combine(query_date, self.WORK_START)
+        work_end = datetime.combine(query_date, self.WORK_END)
+
+        while slot_start + timedelta(minutes=self.SLOT_DURATION) <= work_end:
+            slot_end = slot_start + timedelta(minutes=self.SLOT_DURATION)
+            slot_start_t = slot_start.time()
+            slot_end_t = slot_end.time()
+
+            # Check if this slot overlaps any busy interval
+            is_free = not any(
+                b_start < slot_end_t and b_end > slot_start_t
+                for b_start, b_end in busy
+            )
+
+            if is_free:
+                available.append({
+                    "start": slot_start.strftime("%H:%M"),
+                    "end": slot_end.strftime("%H:%M"),
+                    "datetime": slot_start.isoformat(),
+                })
+
+            slot_start += timedelta(minutes=self.SLOT_DURATION)
+
+        return Response({
+            "staff_id": staff_id,
+            "date": date_str,
+            "slot_duration_minutes": self.SLOT_DURATION,
+            "available_slots": available,
+        })
