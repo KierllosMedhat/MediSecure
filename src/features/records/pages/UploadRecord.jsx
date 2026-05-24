@@ -16,6 +16,7 @@
  * - Navigate back on success
  */
 import { Card, Button, Input } from '../../../components/ui';
+import patientApi from '../../../api/services/patientService';
 import './RecordPages.css';
 import { useState,useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
