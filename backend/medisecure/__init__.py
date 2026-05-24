@@ -1,0 +1,1 @@
+# MediSecure Django Project
