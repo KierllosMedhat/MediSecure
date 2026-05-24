@@ -25,7 +25,8 @@ import DocumentSection from '../components/DocumentSection';
 import * as Yup from 'yup';
 import { mergeConfig } from 'axios';
 export default function UploadRecord() {
-  const { id: patientId} = useParams();
+  //const { id: patientId} = useParams();
+  const patientId = 1;
   const navigate = useNavigate();
 const [returnedRecordId,setReturnedRecordId] = useState(null);
   const RECORD_TYPES = [
@@ -70,6 +71,13 @@ const [returnedRecordId,setReturnedRecordId] = useState(null);
       files:[],
     },
     onSubmit: (values, { setSubmitting }) => {
+
+if(!values.files.length){
+  setSubmitting(false);
+  alert("Add files to create record");
+}
+
+
       dummySubmit(values);
       setSubmitting(false);
     },
@@ -77,8 +85,8 @@ const [returnedRecordId,setReturnedRecordId] = useState(null);
   });
 
   const dummySubmit = (values)=>{
-    alert(`new record for patient ${patientId}`);
-    //navigate(`/patients/${patientId}/records`);
+    alert(`new record created successfully`);
+    navigate(`/patients/${patientId}/records`);
     return;
   }
 
@@ -143,28 +151,7 @@ if(!isPresent){
 }
 }
 
-// const onFileChange = (incomingFiles)=>{
-// const newFiles = Array.from(incomingFiles);
-// const current = formik.values.files;
 
-// const merged = [...current];
-
-// newFiles.forEach(newFile => {
-//   const isDuplicate = merged.some(
-//     f => f.name === newFile.name && f.size === newFile.size
-//   );
-//   if (!isDuplicate) merged.push(newFile);
-// });
-
-// formik.setFieldValue('files',merged);
-// formik.setFieldTouched('files',true);
-
-// }
-
-// const removeFile = (index) => {
-//   const updated = formik.values.files.filter((_, i) => i !== index);
-//   formik.setFieldValue('files', updated);
-// };
 
 const handleUpload = async () => {
 
@@ -194,16 +181,15 @@ const handleUpload = async () => {
     //add to documents
     setDocuments([...documents, newDocument]);
     setNextDocID(nextDocID + 1);
+
+    // add to formik
+    formik.setFieldValue('files',[...formik.values.files,file]);
+    formik.setFieldTouched('files',true);
     
 
     setFile(null);
   }
     
-  
-
-
-
-
 
   return (
     <div className="records-page">
@@ -305,7 +291,11 @@ const handleUpload = async () => {
   <DocumentSection documents={documents} docError={docError} downloadable={false} />
 
   <DragAndDropFileUpload patientId={patientId} recordId = {returnedRecordId} file={file} handleFile={handleFile} onUpload={handleUpload}/>
-
+  {formik.touched.files && formik.errors.files ? (
+  <p className="record-form__error" role="alert">
+    {formik.errors.files}
+  </p>
+) : null}
   
   <button
     type="submit"
@@ -317,12 +307,6 @@ const handleUpload = async () => {
   </button>
 </form>
 
-
-
-
-  
-
-      
     
     </div>
   );
