@@ -143,7 +143,9 @@ useEffect(() => {
   retrieveRecords(filters);
  }
  const handleRowClick = (record) => {
-  navigate(`/patients/me/records/${record.record_id}`);
+  navigate(`/patients/me/records/currentRecord`,{
+    state: {id:patientId,recordId:record.record_id}
+  });
  }
 
  //prepare columns

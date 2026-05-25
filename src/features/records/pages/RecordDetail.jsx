@@ -16,7 +16,7 @@
  * - Handle 403 → show "Access Denied / Consent Required" message
  * - Back button to records list
  */
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate,useLocation } from 'react-router-dom';
 import { Card, Button, StatusBadge, DataTable } from '../../../components/ui';
 import './RecordPages.css';
 import recordsApi from '../../../api/services/recordsService';
@@ -24,7 +24,9 @@ import { useState, useEffect, useRef } from 'react';
 import DragAndDropFileUpload from '../components/DragAndDropFileUpload';
 import DocumentSection from '../components/DocumentSection';
 export default function RecordDetail() {
-  const { id: patientId, recordId } = useParams();
+  //const { id: patientId, recordId } = useParams();
+  const location = useLocation();
+const {patientId,recordId} = location.state;
   const navigate = useNavigate();
 
   // dummy data for testing

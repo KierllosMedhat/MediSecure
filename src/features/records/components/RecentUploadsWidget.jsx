@@ -10,7 +10,7 @@
 import { Card } from '../../../components/ui';
 import DocumentSection from './DocumentSection';
 export default function RecentUploadsWidget({ uploads = [] }) {
-
+const [docError,setDocError] = useState(null);
   
   const handleDownload = async (documentId, fallbackFileName = 'document') => {
     try {
@@ -56,7 +56,7 @@ export default function RecentUploadsWidget({ uploads = [] }) {
   return (
     <Card title="Recent Uploads" subtitle="Latest documents added">
       {/* TODO: Render uploads list or empty state */}
-        <DocumentSection documents={uploads} downloadable={true} handleDownload={handleDownload} />
+        <DocumentSection documents={uploads} docError={docError} downloadable={true} handleDownload={handleDownload} />
 
     </Card>
   );

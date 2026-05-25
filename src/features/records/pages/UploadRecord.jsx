@@ -117,7 +117,7 @@ if(!values.files.length){
 
   const dummySubmit = (values)=>{
     alert(`new record created successfully`);
-    navigate(`/patients/${patientId}/records`);
+    navigate(`/patients/me/records`);
     return;
   }
 
