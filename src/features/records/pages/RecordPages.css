@@ -130,10 +130,38 @@
   align-items: end;
   background: var(--records-card);
   border: 1px solid var(--records-line);
-  border-radius: var(--records-radius);
+  border-radius: var(--radius-full);
+  /*padding: var(--space-2) var(--space-4);
+  /*border-radius: var(--records-radius);*/
   padding: 12px;
   box-shadow: var(--records-shadow);
 }
+
+.records-filter-bar {
+  display: flex;
+  flex-direction: row;
+  gap: 16px;
+  align-items: center;
+  background: var(--records-card);
+  border: 1px solid var(--records-line);
+  padding: 8px 16px;          /* reduced padding */
+  box-shadow: var(--records-shadow);
+  border-radius: 999px;       /* fully rounded like the search bar */
+}
+
+.records-filter-select,
+.records-filter-input {
+  height: 36px;
+  border: 1px solid var(--records-line);
+  border-radius: 999px;       /* fully rounded */
+  padding: 0 14px;
+  font-size: 14px;
+  color: var(--records-text);
+  background: #f5f8fb;        /* slight grey like search bar bg */
+  outline: none;
+  min-width: 160px;
+}
+
 
 /* ===== TODO: Record detail styles (header/content/documents) ===== */
 .record-header,

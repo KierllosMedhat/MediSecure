@@ -16,13 +16,48 @@
  * - Navigate back on success
  */
 import { Card, Button, Input } from '../../../components/ui';
+
 import './RecordPages.css';
-import { useState,useRef } from 'react';
+import { useState,useRef,useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useFormik,Formik, Form, Field, ErrorMessage } from 'formik';
+import DragAndDropFileUpload from '../components/DragAndDropFileUpload';
+import DocumentSection from '../components/DocumentSection';
 import * as Yup from 'yup';
+import { mergeConfig } from 'axios';
 export default function UploadRecord() {
-  const { id: patientId} = useParams();
+  //const { id: patientId} = useParams();
+  //const patientId = 1;
+  // user data retreival
+const [patientId,setPatientId] = useState(null);
+
+function getUserIdFromStorage() {
+  try {
+    const raw = sessionStorage.getItem('user');
+    if (!raw) return null;
+
+    const user = JSON.parse(raw);
+    return user?.id ?? user?.User_Id ?? user?.ID ?? null; // supports either naming
+
+    //return 1; // dummy for now
+  } catch {
+    return null;
+  }
+}
+useEffect(()=>{
+const currentUserID = getUserIdFromStorage();
+
+if(currentUserID){
+  setPatientId(currentUserID);
+  return;
+}
+else{
+  setPatientId(1); // dummyid
+}
+return
+},[])
+
+
   const navigate = useNavigate();
 const [returnedRecordId,setReturnedRecordId] = useState(null);
   const RECORD_TYPES = [
@@ -48,41 +83,32 @@ const [returnedRecordId,setReturnedRecordId] = useState(null);
         'Please select a record type'
       )
       .required('Record type is required'),
+    files: Yup.array()
+      .min(1, 'At least one file is required')
+      .max(5, 'You can upload up to 5 files')
+      .test('fileSize', 'Each file must be under 5MB', files =>
+        !files || files.every(f => f.size <= 5 * 1024 * 1024)
+      ),
   });
 
   
-
-  //onSubmit real code 
-  /*onSubmit: async (values, helpers) => {
-  const { setSubmitting, setStatus, setFieldError } = helpers;
-  setStatus(undefined); // clear previous form-level error
-  try {
-    await formSubmit(values);
-    // navigate or toast success
-  } catch (error) {
-    const status = error.response?.status;
-    const body = error.response?.data;
-    // Field errors if your API returns them (adjust to your real shape)
-    if (status === 422 && body?.errors) {
-      Object.entries(body.errors).forEach(([field, messages]) => {
-        setFieldError(field, Array.isArray(messages) ? messages[0] : String(messages));
-      });
-      return;
-    }
-    setStatus(getApiErrorMessage(error)); // show above the form
-  } finally {
-    setSubmitting(false);
-  }
-}, */
 
 
   const formik = useFormik({
     initialValues: {
       title: "",
       description: "",
-      record_type: ""
+      record_type: "",
+      files:[],
     },
     onSubmit: (values, { setSubmitting }) => {
+
+if(!values.files.length){
+  setSubmitting(false);
+  alert("Add files to create record");
+}
+
+
       dummySubmit(values);
       setSubmitting(false);
     },
@@ -90,8 +116,8 @@ const [returnedRecordId,setReturnedRecordId] = useState(null);
   });
 
   const dummySubmit = (values)=>{
-    alert(`new record for patient ${patientId}`);
-    //navigate(`/patients/${patientId}/records`);
+    alert(`new record created successfully`);
+    navigate(`/patients/me/records`);
     return;
   }
 
@@ -103,79 +129,79 @@ const [returnedRecordId,setReturnedRecordId] = useState(null);
       description: values.description,
     });
     setReturnedRecordId(data.recordId);
+
+    if(returnedRecordId){
+     try{
+for (const rawfile of rawfiles){
+  //await recordsApi.uploadDocument(returnedRecordId,rawfile);
+}
+await new Promise((resolve) => setTimeout(resolve, 800)); // demo delay
+alert(`Upload success: ${files.length} files have been uploaded to record ${returnedRecordId }`);
+
+     }catch (error) {
+      console.error(error);
+      alert("Upload failed.");
+      
+    } finally {
+      
+      formik.setFieldValue('files', []);
+      
+    }
+
+
+    }else {
+      alert("could not create record");
+      return;
+    }
     return data; 
   };
 
 // uploading document handling
 
 const [documents,setDocuments] = useState([]); 
+const [docError,setDocError] = useState(null);
+const [nextDocID,setNextDocID] = useState(9104);
+const [rawfiles,SetRawFiles] = useState([]);
 
  // drag and drop states
  const [file, setFile] = useState(null);
- const [isDragging, setIsDragging] = useState(null);
- const inputRef = useRef();
- const [isUploading, setIsUploading] = useState(null);
+ 
 
  // uploading documents 
- const handleonDragOver = (e) => {
-  e.preventDefault();
-  setIsDragging(false);
-}
-
-const handleonDragLeave = (e) => {
-  e.preventDefault();
-  setIsDragging(true);
-}
-
+ 
 const handleFile = (addedFile) => {
+
   if (!addedFile) return;
-  setFile(addedFile);
+
+// const fileCollection = formik.values.files;
+
+const isPresent = rawfiles.some(f=>f.name== addedFile.name && f.size==addedFile.size)
+
+if(!isPresent){
+ setFile(addedFile);
+}
 }
 
 
-const handleDragOver = (e) => {
-  e.preventDefault();
-  setIsDragging(true);
-};
-const handleDragLeave = () => {
-  setIsDragging(false);
-};
-
-const handleDrop = (e) => {
-  e.preventDefault();
-  setIsDragging(false);
-  const droppedFile = e.dataTransfer.files?.[0];
-  handleFile(droppedFile);
-};
-
-const handleBrowseClick = () => {
-  inputRef.current?.click();
-};
-const handleInputChange = (e) => {
-  const selectedFile = e.target.files?.[0];
-  handleFile(selectedFile);
-};
 
 const handleUpload = async () => {
+
+  
   if (!file) {
     alert("File was not uploaded try agian");
     return;
-  }else if(!returnedRecordId){
-  alert("Patient's record was not created yet");
-  return;
   }
-
-  try {
-
-
+ 
     const formData = new FormData();
     formData.append("file", file);
 
+    SetRawFiles([...rawfiles,formData]);
+
     const newDocument = {
-      document_idd: nextDocID,
-      record_id: returnedRecordId,
+      document_id: nextDocID,
+      record_id: 102,
       file_name: file.name,
-      file_path: `/uploads/records/${returnedRecordId}/${file.name}.${file.type}`,
+      file_path: `/uploads/records/102/${file.name}.${file.type}`,
       file_type: file.type,
       file_size: file.size,
       uploaded_By: patientId,
@@ -186,21 +212,15 @@ const handleUpload = async () => {
     //add to documents
     setDocuments([...documents, newDocument]);
     setNextDocID(nextDocID + 1);
-    //await recordsApi.uploadDocument(returnedRecordId,formData);
 
-    await new Promise((resolve) => setTimeout(resolve, 800)); // demo delay
-    alert(`Upload success: ${file.name} has been uploaded to record ${returnedRecordId }`);
-  } catch (error) {
-    console.error(error);
-    alert("Upload failed.");
-  } finally {
-    setIsUploading(false);
+    // add to formik
+    formik.setFieldValue('files',[...formik.values.files,file]);
+    formik.setFieldTouched('files',true);
+    
+
     setFile(null);
   }
-
-}
-
-
+    
 
   return (
     <div className="records-page">
@@ -299,7 +319,15 @@ const handleUpload = async () => {
       </p>
     ) : null}
   </div>
+  <DocumentSection documents={documents} docError={docError} downloadable={false} />
 
+  <DragAndDropFileUpload patientId={patientId} recordId = {returnedRecordId} file={file} handleFile={handleFile} onUpload={handleUpload}/>
+  {formik.touched.files && formik.errors.files ? (
+  <p className="record-form__error" role="alert">
+    {formik.errors.files}
+  </p>
+) : null}
+  
   <button
     type="submit"
     className="record-form__submit"
@@ -310,47 +338,6 @@ const handleUpload = async () => {
   </button>
 </form>
 
-
-
-
-
-      <div className="upload-section">
-        <div
-          className={`drop-zone ${isDragging ? "drop-zone--active" : ""}`}
-          onClick={handleBrowseClick}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-        >
-          <input
-            ref={inputRef}
-            type="file"
-            className="drop-zone__input"
-            onChange={handleInputChange}
-          />
-          <p className="drop-zone__text">
-            {file
-              ? `Selected: ${file.name}`
-              : "Drag & drop a file here, or click to browse"}
-          </p>
-          {file && (
-            <p className="drop-zone__meta">
-              {(file.size / 1024).toFixed(1)} KB
-            </p>
-          )}
-        </div>
-        <button
-          type="button"
-          className="upload-btn"
-          onClick={handleUpload}
-          disabled={!file || isUploading}
-        >
-          {isUploading ? "Uploading..." : "Upload"}
-        </button>
-      </div>
-    
-
-      
     
     </div>
   );

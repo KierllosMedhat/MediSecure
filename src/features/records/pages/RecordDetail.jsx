@@ -16,14 +16,17 @@
  * - Handle 403 → show "Access Denied / Consent Required" message
  * - Back button to records list
  */
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate,useLocation } from 'react-router-dom';
 import { Card, Button, StatusBadge, DataTable } from '../../../components/ui';
 import './RecordPages.css';
 import recordsApi from '../../../api/services/recordsService';
 import { useState, useEffect, useRef } from 'react';
-
+import DragAndDropFileUpload from '../components/DragAndDropFileUpload';
+import DocumentSection from '../components/DocumentSection';
 export default function RecordDetail() {
-  const { id: patientId, recordId } = useParams();
+  //const { id: patientId, recordId } = useParams();
+  const location = useLocation();
+const {patientId,recordId} = location.state;
   const navigate = useNavigate();
 
   // dummy data for testing
@@ -113,50 +116,14 @@ export default function RecordDetail() {
 
   // drag and drop states
   const [file, setFile] = useState(null);
-  const [isDragging, setIsDragging] = useState(null);
-  const inputRef = useRef();
-  const [isUploading, setIsUploading] = useState(null);
+
   //dummy data for trial
   const [nextDocID, setNextDocID] = useState(9104);
-
-  const handleonDragOver = (e) => {
-    e.preventDefault();
-    setIsDragging(false);
-  }
-
-  const handleonDragLeave = (e) => {
-    e.preventDefault();
-    setIsDragging(true);
-  }
 
   const handleFile = (addedFile) => {
     if (!addedFile) return;
     setFile(addedFile);
   }
-
-
-  const handleDragOver = (e) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-  const handleDragLeave = () => {
-    setIsDragging(false);
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    setIsDragging(false);
-    const droppedFile = e.dataTransfer.files?.[0];
-    handleFile(droppedFile);
-  };
-
-  const handleBrowseClick = () => {
-    inputRef.current?.click();
-  };
-  const handleInputChange = (e) => {
-    const selectedFile = e.target.files?.[0];
-    handleFile(selectedFile);
-  };
 
   const handleUpload = async () => {
     if (!file) {
@@ -171,10 +138,10 @@ export default function RecordDetail() {
       formData.append("file", file);
 
       const newDocument = {
-        document_idd: nextDocID,
+        document_id: nextDocID,
         record_id: recordId,
         file_name: file.name,
-        file_path: `/uploads/records/102/${file.name}.${file.type}`,
+        file_path: `/uploads/records/${recordId}/${file.name}.${file.type}`,
         file_type: file.type,
         file_size: file.size,
         uploaded_By: patientId,
@@ -193,7 +160,7 @@ export default function RecordDetail() {
       console.error(error);
       alert("Upload failed.");
     } finally {
-      setIsUploading(false);
+      
       setFile(null);
     }
 
@@ -321,7 +288,7 @@ export default function RecordDetail() {
   return (
     <div className="records-page">
       {/* TODO: Back link */}
-      <Button onClick={() => navigate(`/patients/${patientId}/records`)}>Back</Button>
+      <Button onClick={() => navigate('/patients/me/records')}>Back</Button>
 
       {/* TODO: MedicalRecord header (Title, Created_by, created_at, Record_type badge) */}
       {/* <Card className="record-header">
@@ -344,42 +311,10 @@ Created At
       <DataTable columns={columns} data={[record]} emptyMessage={emptyMessage} />
 
       {/* TODO: Document attachments list with download buttons */}
-      <DocumentSection documents={documents} docError={docError} handleDownload={handleDownload} />
+      <DocumentSection documents={documents} docError={docError} downloadable={true} handleDownload={handleDownload} />
 
-      <div className="upload-section">
-        <div
-          className={`drop-zone ${isDragging ? "drop-zone--active" : ""}`}
-          onClick={handleBrowseClick}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-        >
-          <input
-            ref={inputRef}
-            type="file"
-            className="drop-zone__input"
-            onChange={handleInputChange}
-          />
-          <p className="drop-zone__text">
-            {file
-              ? `Selected: ${file.name}`
-              : "Drag & drop a file here, or click to browse"}
-          </p>
-          {file && (
-            <p className="drop-zone__meta">
-              {(file.size / 1024).toFixed(1)} KB
-            </p>
-          )}
-        </div>
-        <button
-          type="button"
-          className="upload-btn"
-          onClick={handleUpload}
-          disabled={!file || isUploading}
-        >
-          {isUploading ? "Uploading..." : "Upload"}
-        </button>
-      </div>
+      <DragAndDropFileUpload patientId={patientId} recordId = {recordId} file={file} handleFile={handleFile} onUpload={handleUpload}/>
+
     </div>
 
 
@@ -415,41 +350,4 @@ function ErrorFallback(props) {
   );
 }
 
-function DocumentSection(props) {
-  const documents = props.documents;
-  const docListRef = useRef(null);
-  if (props.docError) {
-    return (
-      <p> could not retreive documents</p>
-    );
-  }
-  return (
-    <Card className="record-documents">
-      <h3>Attachments</h3>
-
-      {documents.length === 0 ? (
-        <p>No documents available.</p>
-      ) : (
-        <ul className="documents-list" ref={docListRef}>
-          {documents.map((doc) => (
-            <li key={doc.Document_Id} className="document-item">
-              <div className="document-info">
-                <div><strong>{doc.file_name || 'Unnamed file'}</strong></div>
-                <div>Type: {doc.file_type || 'N/A'}</div>
-
-              </div>
-
-              <Button onClick={() => props.handleDownload(doc.Document_Id, doc.file_name)}>
-                Download
-              </Button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </Card>
-
-
-
-  );
-}
 

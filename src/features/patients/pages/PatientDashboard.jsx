@@ -232,7 +232,7 @@ export default function PatientDashboard() {
               </div>
               <button
                 className="btn-outline btn-sm"
-                onClick={() => navigate('/records/upload')}
+                onClick={() => navigate(`/patients/me/records/upload`)}
                 id="dashboard-upload-btn"
               >
                 <IoCloudUploadOutline /> Upload
