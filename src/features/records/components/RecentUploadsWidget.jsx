@@ -8,13 +8,26 @@
  * - Show empty state if no uploads
  */
 import { Card } from '../../../components/ui';
+import {useState} from 'react';
 import DocumentSection from './DocumentSection';
 export default function RecentUploadsWidget({ uploads = [] }) {
 const [docError,setDocError] = useState(null);
+
+// transforming uploads to correct attribute naming
+const readyDocs = uploads.map(
+  upload=>(
+    {
+      document_id:upload.id,
+      file_name:upload.title,
+      created_at:upload.date,
+      file_type:'document' // no file type in original input
+    }
+  )
+);
   
-  const handleDownload = async (documentId, fallbackFileName = 'document') => {
+  const handleDownload = async (document_id, fallbackFileName = 'document') => {
     try {
-      const response = await recordsApi.downloadDocument(documentId);
+      const response = await recordsApi.downloadDocument(document_id);
 
       // response.data is the blob payload from axios (responseType: 'blob')
       const blob = response.data instanceof Blob
@@ -56,7 +69,7 @@ const [docError,setDocError] = useState(null);
   return (
     <Card title="Recent Uploads" subtitle="Latest documents added">
       {/* TODO: Render uploads list or empty state */}
-        <DocumentSection documents={uploads} docError={docError} downloadable={true} handleDownload={handleDownload} />
+        <DocumentSection documents={readyDocs} docError={docError} downloadable={true} handleDownload={handleDownload} />
 
     </Card>
   );

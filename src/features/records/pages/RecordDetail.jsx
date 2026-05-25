@@ -217,9 +217,9 @@ const {patientId,recordId} = location.state;
 
 
 
-  const handleDownload = async (documentId, fallbackFileName = 'document') => {
+  const handleDownload = async (document_id, fallbackFileName = 'document') => {
     try {
-      const response = await recordsApi.downloadDocument(documentId);
+      const response = await recordsApi.downloadDocument(document_id);
 
       // response.data is the blob payload from axios (responseType: 'blob')
       const blob = response.data instanceof Blob
