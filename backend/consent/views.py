@@ -2,19 +2,23 @@
 Consent Views — Owner: Abdullah
 
 API views aligned to frontend consentService.js:
-  GET    /patients/<id>/consents           → ConsentListView    (getConsents)
-  POST   /patients/<id>/consents           → ConsentGrantView   (grantConsent)
-  DELETE /patients/<id>/consents/<cid>     → ConsentRevokeView  (revokeConsent)
+  GET    /patients/<id>/consents           -> ConsentListView    (getConsents)
+  POST   /patients/<id>/consents           -> ConsentGrantView   (grantConsent)
+  DELETE /patients/<id>/consents/<cid>     -> ConsentRevokeView  (revokeConsent)
 
 Admin/utility:
-  GET    /consents/check                   → ConsentCheckView
-  GET    /consents/<id>                    → ConsentDetailView
+  GET    /consents/check                   -> ConsentCheckView
+  GET    /consents/<id>                    -> ConsentDetailView
 """
 
 from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import PermissionDenied
+from django.shortcuts import get_object_or_404
+from django.utils import timezone
+from django.apps import apps
 
 from .models import Consent
 from .serializers import (
@@ -41,10 +45,25 @@ class ConsentListView(generics.ListAPIView):
 
     def get_queryset(self):
         patient_id = self.kwargs.get("patient_id")
-        # TODO (Abdullah): Return Consent.objects.filter(patient_id=patient_id)
-        # TODO (Abdullah): Enforce that request.user owns this patient OR is staff
-        # TODO (Abdullah): Optional filter: ?is_active=true/false
-        pass
+        Patient = apps.get_model('patients', 'Patient')
+        patient = get_object_or_404(Patient, id=patient_id)
+
+        # Enforce that request.user owns this patient OR is staff
+        is_owner = getattr(patient, 'user', None) == self.request.user
+        is_staff = getattr(self.request.user, 'is_staff', False)
+        
+        if not (is_owner or is_staff):
+            raise PermissionDenied("You do not have permission to view these consent records.")
+
+        queryset = Consent.objects.filter(patient=patient)
+
+        # Optional filter: ?is_active=true/false
+        is_active_param = self.request.query_params.get("is_active")
+        if is_active_param is not None:
+            is_active_bool = is_active_param.lower() == 'true'
+            queryset = queryset.filter(is_active=is_active_bool)
+
+        return queryset
 
 
 # ──────────────────────────────────────────────────────
@@ -62,12 +81,24 @@ class ConsentGrantView(generics.CreateAPIView):
     serializer_class = ConsentGrantSerializer
     permission_classes = [IsAuthenticated]
 
-    def perform_create(self, serializer):
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
         patient_id = self.kwargs.get("patient_id")
-        # TODO (Abdullah): Validate request.user is the patient with patient_id
-        # TODO (Abdullah): Set patient from patient_id in URL
-        # TODO (Abdullah): Log consent grant in audit log
-        pass
+        Patient = apps.get_model('patients', 'Patient')
+        context['patient'] = get_object_or_404(Patient, id=patient_id)
+        return context
+
+    def perform_create(self, serializer):
+        patient = serializer.context.get('patient')
+
+        # Validate request.user is the patient with patient_id
+        if getattr(patient, 'user', None) != self.request.user:
+            raise PermissionDenied("You can only grant consent for your own records.")
+
+        consent = serializer.save()
+
+        # TODO (Kyrillos - Audit): Log consent grant in audit log
+        # audit_utils.log_action(user=self.request.user, action="CONSENT_GRANTED", target=consent.id)
 
 
 # ──────────────────────────────────────────────────────
@@ -85,13 +116,25 @@ class ConsentRevokeView(APIView):
     permission_classes = [IsAuthenticated]
 
     def delete(self, request, patient_id, pk):
-        # TODO (Abdullah): Get consent by pk AND patient_id (both must match)
-        # TODO (Abdullah): Validate request.user owns this patient profile
-        # TODO (Abdullah): Validate consent is currently active
-        # TODO (Abdullah): Set is_active=False, revoked_at=timezone.now()
-        # TODO (Abdullah): Log revocation in audit log
-        # TODO (Abdullah): Return 200 {"message": "Consent revoked", "revoked_at": "..."}
-        pass
+        # Get consent by pk AND patient_id (both must match)
+        consent = get_object_or_404(Consent, pk=pk, patient_id=patient_id)
+
+        # Validate request.user owns this patient profile
+        if getattr(consent.patient, 'user', None) != request.user:
+            raise PermissionDenied("You can only revoke your own consents.")
+
+        # Trigger validation and soft-delete via Serializer
+        serializer = ConsentRevokeSerializer(consent, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        # TODO (Kyrillos - Audit): Log revocation in audit log
+        # audit_utils.log_action(user=request.user, action="CONSENT_REVOKED", target=consent.id)
+
+        return Response({
+            "message": "Consent revoked",
+            "revoked_at": consent.revoked_at
+        }, status=status.HTTP_200_OK)
 
 
 # ──────────────────────────────────────────────────────
@@ -106,8 +149,10 @@ class ConsentDetailView(generics.RetrieveAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        # TODO (Abdullah): Return Consent.objects.all() with permission filtering
-        pass
+        # Return Consent.objects.all() with permission filtering
+        if getattr(self.request.user, 'is_staff', False):
+            return Consent.objects.all()
+        raise PermissionDenied("Only staff members can access detailed consent records.")
 
 
 # ──────────────────────────────────────────────────────
@@ -123,6 +168,32 @@ class ConsentCheckView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        # TODO (Abdullah): Read patient_id, staff_id, purpose from query params
-        # TODO (Abdullah): Query active consents, return {"has_consent": bool, "consent_id": id|None}
-        pass
+        # Read patient_id, staff_id, purpose from query params
+        patient_id = request.query_params.get("patient_id")
+        staff_id = request.query_params.get("staff_id")
+        purpose = request.query_params.get("purpose")
+
+        if not all([patient_id, staff_id, purpose]):
+            return Response(
+                {"error": "Missing required parameters: patient_id, staff_id, purpose"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Query active consents
+        consent = Consent.objects.filter(
+            patient_id=patient_id,
+            staff_id=staff_id,
+            purpose=purpose,
+            is_active=True
+        ).first()
+
+        if consent:
+            return Response({
+                "has_consent": True,
+                "consent_id": consent.id
+            }, status=status.HTTP_200_OK)
+            
+        return Response({
+            "has_consent": False,
+            "consent_id": None
+        }, status=status.HTTP_200_OK)

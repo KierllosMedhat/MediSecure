@@ -23,6 +23,6 @@ from . import views
 app_name = "consent"
 
 urlpatterns = [
-    path("check", views.ConsentCheckView.as_view(), name="consent-check"),
-    path("<int:pk>", views.ConsentDetailView.as_view(), name="consent-detail"),
+    path("check/", views.ConsentCheckView.as_view(), name="consent-check"),
+    path("<int:pk>/", views.ConsentDetailView.as_view(), name="consent-detail"),
 ]
