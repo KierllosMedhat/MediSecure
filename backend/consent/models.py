@@ -7,6 +7,7 @@ Patients grant/revoke consent for staff to access their records.
 
 from django.db import models
 from django.conf import settings
+from django.utils import timezone
 
 
 class Consent(models.Model):
@@ -61,3 +62,9 @@ class Consent(models.Model):
     def __str__(self):
         status = "Active" if self.is_active else "Revoked"
         return f"Consent ({status}): {self.purpose} — Patient #{self.patient_id}"
+
+    def revoke(self):
+        """Soft-delete/Revoke logic for PDPL compliance"""
+        self.is_active = False
+        self.revoked_at = timezone.now()
+        self.save(update_fields=['is_active', 'revoked_at'])
