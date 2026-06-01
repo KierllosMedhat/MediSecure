@@ -1,26 +1,6 @@
-/**
- * Consent Management — PDPL compliance UI.
- * Owner: Abdullah
- *
- * ERD refs:
- *   Consent → Consent_Id, Patient_Id (FK), Staff_Id (FK),
- *             Purpose, Is_Active, granted_at, revoked_at, deleted_at
- *
- * TODO:
- * - Fetch consents from consentApi.getConsents(patientId)
- * - DataTable columns: Staff name (via Staff_Id), Purpose, granted_at,
- *   Is_Active status (StatusBadge: ACTIVE/REVOKED), revoked_at, actions
- * - "Grant Access" button → opens Modal:
- *     staff_id input, purpose input
- *     → consentApi.grantConsent(patientId, { staff_id, purpose })
- * - "Revoke" button per active consent:
- *     → consentApi.revokeConsent(patientId, consentId)
- *     Sets Is_Active=false, records revoked_at timestamp
- * - Toggle ON/OFF for Is_Active
- */
-
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
+import consentApi from "../../../api/services/consentService";
 import {
   Card,
   Button,
@@ -30,103 +10,73 @@ import {
 } from "../../../components/ui";
 import "./ConsentPages.css";
 
-const mockConsentApi = {
-  getConsents: async (patientId) => [
-    {
-      Consent_Id: "con-1",
-      Staff_Name: "Dr. Sarah Johnson",
-      Purpose: "Surgery Follow-up",
-      Is_Active: true,
-      granted_at: "2026-04-01",
-      revoked_at: null,
-    },
-    {
-      Consent_Id: "con-2",
-      Staff_Name: "Dr. Michael Chen",
-      Purpose: "X-Ray Review",
-      Is_Active: false,
-      granted_at: "2026-03-15",
-      revoked_at: "2026-04-05",
-    },
-  ],
-};
-
 export default function ConsentManagement() {
   const { id: patientId } = useParams();
 
   const [consents, setConsents] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Modal States
   const [isModalOpen, setModalOpen] = useState(false);
   const [newAccess, setNewAccess] = useState({ staff_id: "", purpose: "" });
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // 1. Fetch consents from API
+  const fetchConsents = async () => {
+    if (!patientId) return;
+    setIsLoading(true);
+    try {
+      const response = await consentApi.getConsents(patientId);
+      setConsents(response.data);
+    } catch (error) {
+      console.error("Error fetching consents:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchConsents = async () => {
-      setIsLoading(true);
-      try {
-        const data = await mockConsentApi.getConsents(patientId);
-        setConsents(data);
-      } catch (error) {
-        console.error("Error fetching consents", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
     fetchConsents();
   }, [patientId]);
 
-  // 2. Grant Access Handler
-  const handleGrantAccess = (e) => {
+  const handleGrantAccess = async (e) => {
     e.preventDefault();
     setIsProcessing(true);
-
-    setTimeout(() => {
-      const newConsent = {
-        Consent_Id: `con-${Math.floor(Math.random() * 1000)}`,
-        Staff_Name: `Staff ID: ${newAccess.staff_id}`,
-        Purpose: newAccess.purpose,
-        Is_Active: true,
-        granted_at: new Date().toISOString().split("T")[0],
-        revoked_at: null,
-      };
-
-      setConsents([newConsent, ...consents]);
-      setIsProcessing(false);
+    try {
+      await consentApi.grantConsent(patientId, {
+        staff_id: parseInt(newAccess.staff_id), // Converting to number as expected by JSDoc @param
+        purpose: newAccess.purpose,
+      });
       setModalOpen(false);
       setNewAccess({ staff_id: "", purpose: "" });
-    }, 1000);
+      await fetchConsents();
+    } catch (error) {
+      console.error("Error granting consent:", error);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
-  // 3. Revoke Access Handler (Toggle OFF for Is_Active)
-  const handleRevokeAccess = (consentId) => {
+  const handleRevokeAccess = async (consentId) => {
     if (
       window.confirm(
         "Are you sure you want to revoke access? This action is logged for PDPL compliance.",
       )
     ) {
-      setConsents(
-        consents.map((c) =>
-          c.Consent_Id === consentId
-            ? {
-                ...c,
-                Is_Active: false,
-                revoked_at: new Date().toISOString().split("T")[0],
-              }
-            : c,
-        ),
-      );
+      try {
+        await consentApi.revokeConsent(patientId, consentId);
+        await fetchConsents();
+      } catch (error) {
+        console.error("Error revoking consent:", error);
+      }
     }
   };
 
-  if (isLoading)
+  if (isLoading) {
     return (
       <div className="consent-page" style={{ padding: "2rem" }}>
         <p>Loading security settings...</p>
       </div>
     );
+  }
 
   return (
     <div
@@ -148,7 +98,7 @@ export default function ConsentManagement() {
       <div
         style={{
           display: "flex",
-          justifyContent: "flex-end",
+          justify: "flex-end",
           marginBottom: "1.5rem",
         }}
       >
@@ -157,7 +107,6 @@ export default function ConsentManagement() {
         </Button>
       </div>
 
-      {/* Consent DataTable */}
       <Card style={{ padding: "1.5rem" }}>
         <div style={{ overflowX: "auto" }}>
           <table
@@ -191,7 +140,7 @@ export default function ConsentManagement() {
                         color: "#333",
                       }}
                     >
-                      {consent.Staff_Name}
+                      {consent.Staff_Name || `Staff ID: ${consent.Staff_Id}`}
                     </td>
                     <td style={{ padding: "12px", color: "#666" }}>
                       {consent.Purpose}
@@ -249,7 +198,6 @@ export default function ConsentManagement() {
         </div>
       </Card>
 
-      {/* Grant Access Modal */}
       {isModalOpen && (
         <Modal
           isOpen={isModalOpen}

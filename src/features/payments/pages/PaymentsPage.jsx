@@ -8,49 +8,7 @@ import {
   Input,
 } from "../../../components/ui";
 import "./PaymentPages.css";
-
-// 1. Mock API Data
-const mockPaymentApi = {
-  getOutstandingBalance: async () => ({ amount: 430.0, currency: "EGP" }),
-  getPendingBills: async () => [
-    {
-      id: 1,
-      description: "Consultation Fee - Dr. Sarah",
-      amount: 150,
-      dueDate: "2026-04-20",
-      status: "pending",
-    },
-    {
-      id: 2,
-      description: "Lab Tests - Blood Panel",
-      amount: 280,
-      dueDate: "2026-04-18",
-      status: "overdue",
-    },
-  ],
-  getPaymentHistory: async () => [
-    {
-      Payment_Id: "pay-101",
-      Amount: 150,
-      Currency: "EGP",
-      Payment_Type: "CONSULTATION",
-      Gateway_Type: "INTERNATIONAL",
-      Status: "COMPLETED",
-      created_at: "2026-04-10",
-      Paid_at: "2026-04-10",
-    },
-    {
-      Payment_Id: "pay-102",
-      Amount: 280,
-      Currency: "EGP",
-      Payment_Type: "LAB_RESULT",
-      Gateway_Type: "FAWRY",
-      Status: "FAILED",
-      created_at: "2026-04-15",
-      Paid_at: null,
-    },
-  ],
-};
+import paymentApi from "../../../api/services/paymentService";
 
 export default function PaymentsPage() {
   const navigate = useNavigate();
@@ -86,15 +44,22 @@ export default function PaymentsPage() {
     const loadData = async () => {
       setIsLoading(true);
       try {
-        const [bal, bills, hist] = await Promise.all([
-          mockPaymentApi.getOutstandingBalance(),
-          mockPaymentApi.getPendingBills(),
-          mockPaymentApi.getPaymentHistory(),
+        const [balanceRes, historyRes] = await Promise.all([
+          paymentApi.getOutstandingBalance(),
+          paymentApi.getPaymentHistory(),
         ]);
-        setBalance(bal);
-        setPendingBills(bills);
-        setHistory(hist);
-        console.log("Payment History Data:", hist);
+
+        setBalance({
+          amount: balanceRes.data.balance,
+          currency: balanceRes.data.currency || "EGP",
+        });
+
+        setHistory(historyRes.data);
+
+        const pending = historyRes.data.filter(
+          (item) => item.Status === "PENDING" || item.Status === "PROCESSING",
+        );
+        setPendingBills(pending);
       } catch (error) {
         console.error("Error fetching payment data:", error);
       } finally {
@@ -105,24 +70,35 @@ export default function PaymentsPage() {
   }, []);
 
   // --- Handlers ---
-  const handleFawrySubmit = (e) => {
+  const handleFawrySubmit = async (e) => {
     e.preventDefault();
     setIsProcessing(true);
-    setTimeout(() => {
-      setIsProcessing(false);
+    try {
+      const response = await paymentApi.payWithFawry(fawryPayload);
+      alert(`Fawry Code Generated: ${response.data.fawry_reference_number}`);
       setFawryModalOpen(false);
-      alert("Fawry code generated! Status: PENDING");
-    }, 1500);
+    } catch (error) {
+      console.error("Fawry payment failed:", error);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
-  const handleCardSubmit = (e) => {
+  const handleCardSubmit = async (e) => {
     e.preventDefault();
     setIsProcessing(true);
-    setTimeout(() => {
+    try {
+      const response = await paymentApi.payWithCard(cardPayload);
+      if (response.data.payment_url) {
+        window.location.href = response.data.payment_url;
+      } else {
+        navigate(`/payments/receipt/${response.data.payment_id}`);
+      }
+    } catch (error) {
+      console.error("Card payment failed:", error);
+    } finally {
       setIsProcessing(false);
-      setCardModalOpen(false);
-      navigate("/payments/receipt/new-pay-123");
-    }, 1500);
+    }
   };
 
   if (isLoading)
