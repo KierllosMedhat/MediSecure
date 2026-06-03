@@ -1,19 +1,35 @@
 """
-Patients Admin — Owner: Abanob
+Patients admin configuration.
 """
 
 from django.contrib import admin
+
 from .models import Patient
 
 
-# ──────────────────────────────────────────────────────
-# TODO (Abanob): Customize PatientAdmin
-#   - list_display: user name, national_id, blood_type, date_of_birth
-#   - list_filter: blood_type
-#   - search_fields: user__first_name, user__last_name, national_id
-#   - Add inline for related models if needed
-# ──────────────────────────────────────────────────────
 @admin.register(Patient)
 class PatientAdmin(admin.ModelAdmin):
-    # TODO (Abanob): Customize admin display
-    pass
+    list_display = (
+        "full_name",
+        "national_id",
+        "blood_type",
+        "date_of_birth",
+        "created_at",
+    )
+    list_filter = ("blood_type", "created_at")
+    search_fields = (
+        "national_id",
+        "user__email",
+        "user__first_name",
+        "user__middle_name",
+        "user__last_name",
+    )
+    readonly_fields = ("created_at", "updated_at")
+
+    @admin.display(description="Name")
+    def full_name(self, obj):
+        return " ".join(
+            part
+            for part in [obj.user.first_name, obj.user.middle_name, obj.user.last_name]
+            if part
+        )

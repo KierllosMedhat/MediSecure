@@ -21,6 +21,7 @@ from consent.views import ConsentListView, ConsentGrantView, ConsentRevokeView
 
 # Document download (owned by Fadi) — lives under /documents/<id>/download
 from records.views import DocumentDownloadView
+from patients.views import PatientListView
 
 urlpatterns = [
     # Django Admin
@@ -28,6 +29,7 @@ urlpatterns = [
 
     # ── Abanob ───────────────────────────────────────────
     path("api/v1/auth/", include("accounts.urls")),
+    path("api/v1/patients", PatientListView.as_view(), name="patient-list-no-slash"),
     path("api/v1/patients/", include("patients.urls")),
 
     # ── Fadi ─────────────────────────────────────────────

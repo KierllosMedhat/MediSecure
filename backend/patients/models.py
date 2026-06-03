@@ -29,8 +29,8 @@ class Patient(models.Model):
         on_delete=models.CASCADE,
         related_name="patient_profile",
     )
-    national_id = models.CharField(max_length=20, unique=True)
-    date_of_birth = models.DateField()
+    national_id = models.CharField(max_length=14, unique=True, null=True, blank=True)
+    date_of_birth = models.DateField(null=True, blank=True)
     blood_type = models.CharField(
         max_length=5,
         choices=BloodType.choices,
