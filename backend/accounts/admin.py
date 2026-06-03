@@ -34,5 +34,17 @@ class UserAdmin(BaseUserAdmin):
         ("MediSecure Profile", {"fields": ("middle_name", "phone_number", "role")}),
     )
     add_fieldsets = BaseUserAdmin.add_fieldsets + (
-        ("MediSecure Profile", {"fields": ("email", "first_name", "last_name", "middle_name", "phone_number", "role")}),
+        (
+            "MediSecure Profile",
+            {
+                "fields": (
+                    "email",
+                    "first_name",
+                    "last_name",
+                    "middle_name",
+                    "phone_number",
+                    "role",
+                )
+            },
+        ),
     )

@@ -17,7 +17,6 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import PasswordResetOTP, User
 
-
 OTP_TTL_MINUTES = 10
 RESET_TOKEN_TTL_MINUTES = 15
 MAX_OTP_ATTEMPTS = 5
@@ -60,6 +59,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(required=False, allow_blank=True)
     password = serializers.CharField(write_only=True, min_length=8)
     password_confirm = serializers.CharField(write_only=True, required=False)
 
@@ -95,7 +95,9 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         password = attrs.get("password")
         password_confirm = attrs.get("password_confirm")
         if password_confirm is not None and password != password_confirm:
-            raise serializers.ValidationError({"password_confirm": "Passwords do not match."})
+            raise serializers.ValidationError(
+                {"password_confirm": "Passwords do not match."}
+            )
         _password_validation_error(password)
         return attrs
 
@@ -145,7 +147,9 @@ class PasswordResetRequestSerializer(serializers.Serializer):
         otp = f"{secrets.randbelow(1000000):06d}"
 
         if user:
-            PasswordResetOTP.objects.filter(user=user, is_used=False).update(is_used=True)
+            PasswordResetOTP.objects.filter(user=user, is_used=False).update(
+                is_used=True
+            )
             PasswordResetOTP.objects.create(
                 user=user,
                 otp_hash=make_password(otp),
@@ -196,8 +200,12 @@ class OTPFlowSerializer(serializers.Serializer):
         reset_token = secrets.token_urlsafe(32)
         record.verified_at = timezone.now()
         record.reset_token_hash = make_password(reset_token)
-        record.reset_token_expires_at = timezone.now() + timedelta(minutes=RESET_TOKEN_TTL_MINUTES)
-        record.save(update_fields=["verified_at", "reset_token_hash", "reset_token_expires_at"])
+        record.reset_token_expires_at = timezone.now() + timedelta(
+            minutes=RESET_TOKEN_TTL_MINUTES
+        )
+        record.save(
+            update_fields=["verified_at", "reset_token_hash", "reset_token_expires_at"]
+        )
 
         attrs["user"] = user
         attrs["otp_record"] = record
@@ -217,7 +225,9 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
         password = attrs["new_password"]
         password_confirm = attrs.get("new_password_confirm")
         if password_confirm is not None and password != password_confirm:
-            raise serializers.ValidationError({"new_password_confirm": "Passwords do not match."})
+            raise serializers.ValidationError(
+                {"new_password_confirm": "Passwords do not match."}
+            )
 
         record = self._get_record(attrs)
         if not record or record.is_used or not record.verified_at:
@@ -281,9 +291,13 @@ class ChangePasswordSerializer(serializers.Serializer):
     def validate(self, attrs):
         user = self.context["request"].user
         if not user.check_password(attrs["old_password"]):
-            raise serializers.ValidationError({"old_password": "Old password is incorrect."})
+            raise serializers.ValidationError(
+                {"old_password": "Old password is incorrect."}
+            )
         if attrs["new_password"] != attrs["new_password_confirm"]:
-            raise serializers.ValidationError({"new_password_confirm": "Passwords do not match."})
+            raise serializers.ValidationError(
+                {"new_password_confirm": "Passwords do not match."}
+            )
         _password_validation_error(attrs["new_password"], user=user)
         return attrs
 

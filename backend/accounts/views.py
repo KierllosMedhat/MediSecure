@@ -61,7 +61,9 @@ class LogoutView(generics.GenericAPIView):
         if refresh_token:
             token = RefreshToken(refresh_token)
             token.blacklist()
-        return Response({"message": "Logged out successfully."}, status=status.HTTP_200_OK)
+        return Response(
+            {"message": "Logged out successfully."}, status=status.HTTP_200_OK
+        )
 
 
 class UserProfileView(generics.RetrieveUpdateAPIView):
@@ -118,7 +120,9 @@ class PasswordResetConfirmView(generics.GenericAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response({"message": "Password reset successfully."}, status=status.HTTP_200_OK)
+        return Response(
+            {"message": "Password reset successfully."}, status=status.HTTP_200_OK
+        )
 
 
 class ChangePasswordView(generics.GenericAPIView):
@@ -131,7 +135,9 @@ class ChangePasswordView(generics.GenericAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response({"message": "Password changed successfully."}, status=status.HTTP_200_OK)
+        return Response(
+            {"message": "Password changed successfully."}, status=status.HTTP_200_OK
+        )
 
 
 # Backward-compatible class name used by accounts/urls.py.

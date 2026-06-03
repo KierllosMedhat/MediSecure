@@ -28,16 +28,21 @@ urlpatterns = [
     path("register", views.RegisterView.as_view(), name="register"),
     path("login", views.LoginView.as_view(), name="login"),
     path("logout", views.LogoutView.as_view(), name="logout"),
-
     # Token refresh — frontend calls POST /auth/refresh
     path("refresh", TokenRefreshView.as_view(), name="token-refresh"),
-
     # Profile
     path("profile", views.UserProfileView.as_view(), name="profile"),
-
     # Password Reset Flow — matched to frontend authService.js
-    path("forgot-password", views.PasswordResetRequestView.as_view(), name="forgot-password"),
+    path(
+        "forgot-password",
+        views.PasswordResetRequestView.as_view(),
+        name="forgot-password",
+    ),
     path("verify-otp", views.OTPVerificationView.as_view(), name="verify-otp"),
-    path("reset-password", views.PasswordResetConfirmView.as_view(), name="reset-password"),
+    path(
+        "reset-password",
+        views.PasswordResetConfirmView.as_view(),
+        name="reset-password",
+    ),
     path("change-password", views.ChangePasswordView.as_view(), name="change-password"),
 ]

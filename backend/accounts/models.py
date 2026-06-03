@@ -82,4 +82,7 @@ class PasswordResetOTP(models.Model):
 
     @property
     def is_reset_token_expired(self):
-        return not self.reset_token_expires_at or timezone.now() >= self.reset_token_expires_at
+        return (
+            not self.reset_token_expires_at
+            or timezone.now() >= self.reset_token_expires_at
+        )

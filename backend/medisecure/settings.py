@@ -13,7 +13,13 @@ from decouple import config, Csv
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = config("SECRET_KEY", default="django-insecure-change-me-in-production")
-DEBUG = config("DEBUG", default=True, cast=bool)
+
+
+def cast_bool(value):
+    return str(value).strip().lower() in {"1", "true", "yes", "on", "debug", "development"}
+
+
+DEBUG = config("DEBUG", default=True, cast=cast_bool)
 ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,127.0.0.1", cast=Csv())
 
 # Frontend service files call URLs without trailing slashes
@@ -36,16 +42,16 @@ INSTALLED_APPS = [
     "corsheaders",
     "django_filters",
     # Local apps
-    "accounts",       # Abanob — Auth & User management
-    "patients",       # Abanob — Patient profiles & dashboard
-    "records",        # Fadi   — Medical records & documents
-    "hospitals",      # Fadi   — Hospital management
-    "consent",        # Abdullah — PDPL consent management
-    "payments",       # Abdullah — Payments & billing
-    "staff",          # Kyrillos — Staff CRUD
-    "appointments",   # Kyrillos — Appointment scheduling
+    "accounts",  # Abanob — Auth & User management
+    "patients",  # Abanob — Patient profiles & dashboard
+    "records",  # Fadi   — Medical records & documents
+    "hospitals",  # Fadi   — Hospital management
+    "consent",  # Abdullah — PDPL consent management
+    "payments",  # Abdullah — Payments & billing
+    "staff",  # Kyrillos — Staff CRUD
+    "appointments",  # Kyrillos — Appointment scheduling
     "notifications",  # Kyrillos — Notification center
-    "audit",          # Kyrillos — Audit logging
+    "audit",  # Kyrillos — Audit logging
 ]
 
 # ──────────────────────────────────────────────
@@ -86,16 +92,24 @@ WSGI_APPLICATION = "medisecure.wsgi.application"
 # ──────────────────────────────────────────────
 # Database — PostgreSQL
 # ──────────────────────────────────────────────
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": config("DB_NAME", default="medisecure_db"),
-        "USER": config("DB_USER", default="postgres"),
-        "PASSWORD": config("DB_PASSWORD", default="postgres"),
-        "HOST": config("DB_HOST", default="localhost"),
-        "PORT": config("DB_PORT", default="5432"),
+if config("USE_SQLITE", default=False, cast=cast_bool):
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": config("DB_NAME", default="medisecure_db"),
+            "USER": config("DB_USER", default="postgres"),
+            "PASSWORD": config("DB_PASSWORD", default="postgres"),
+            "HOST": config("DB_HOST", default="localhost"),
+            "PORT": config("DB_PORT", default="5432"),
+        }
+    }
 
 # ──────────────────────────────────────────────
 # Custom User Model (Abanob)
@@ -106,7 +120,9 @@ AUTH_USER_MODEL = "accounts.User"
 # Password Validation
 # ──────────────────────────────────────────────
 AUTH_PASSWORD_VALIDATORS = [
-    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"
+    },
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
@@ -147,9 +163,7 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
-    "DEFAULT_PERMISSION_CLASSES": (
-        "rest_framework.permissions.IsAuthenticated",
-    ),
+    "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
     "DEFAULT_FILTER_BACKENDS": (
         "django_filters.rest_framework.DjangoFilterBackend",
         "rest_framework.filters.SearchFilter",
