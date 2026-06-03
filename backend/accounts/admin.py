@@ -16,5 +16,23 @@ from .models import User
 # ──────────────────────────────────────────────────────
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
-    # TODO (Abanob): Customize list_display, list_filter, fieldsets
-    pass
+    list_display = (
+        "email",
+        "username",
+        "first_name",
+        "last_name",
+        "role",
+        "phone_number",
+        "is_active",
+        "is_staff",
+    )
+    list_filter = ("role", "is_active", "is_staff", "is_superuser")
+    search_fields = ("email", "username", "first_name", "last_name", "phone_number")
+    ordering = ("email",)
+
+    fieldsets = BaseUserAdmin.fieldsets + (
+        ("MediSecure Profile", {"fields": ("middle_name", "phone_number", "role")}),
+    )
+    add_fieldsets = BaseUserAdmin.add_fieldsets + (
+        ("MediSecure Profile", {"fields": ("email", "first_name", "last_name", "middle_name", "phone_number", "role")}),
+    )

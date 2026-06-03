@@ -22,7 +22,7 @@ boto3>=1.35,<2.0           # For AWS S3
 # django-ses>=4.0           # Uncomment for AWS SES
 
 # Utilities
-Pillow>=10.0,<11.0          # Image processing
+Pillow>=12.0,<13.0          # Image processing; Pillow 10.x does not build on Python 3.14
 python-dateutil>=2.9,<3.0
 
 # Development

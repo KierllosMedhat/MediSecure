@@ -6,72 +6,60 @@ Implemented by Abanob, used by all team members.
 from rest_framework.permissions import BasePermission, SAFE_METHODS
 
 
+def _has_role(request, roles):
+    return (
+        request.user
+        and request.user.is_authenticated
+        and getattr(request.user, "role", None) in roles
+    )
+
+
 class IsAdmin(BasePermission):
     """Allows access only to ADMIN users."""
 
     def has_permission(self, request, view):
-        return (
-            request.user
-            and request.user.is_authenticated
-            and request.user.role == "ADMIN"
-        )
+        return _has_role(request, {"ADMIN"})
 
 
 class IsDoctor(BasePermission):
     """Allows access only to DOCTOR users."""
 
     def has_permission(self, request, view):
-        return (
-            request.user
-            and request.user.is_authenticated
-            and request.user.role == "DOCTOR"
-        )
+        return _has_role(request, {"DOCTOR"})
 
 
 class IsNurse(BasePermission):
     """Allows access only to NURSE users."""
 
     def has_permission(self, request, view):
-        return (
-            request.user
-            and request.user.is_authenticated
-            and request.user.role == "NURSE"
-        )
+        return _has_role(request, {"NURSE"})
 
 
 class IsPatient(BasePermission):
     """Allows access only to PATIENT users."""
 
     def has_permission(self, request, view):
-        return (
-            request.user
-            and request.user.is_authenticated
-            and request.user.role == "PATIENT"
-        )
+        return _has_role(request, {"PATIENT"})
 
 
 class IsBillingStaff(BasePermission):
     """Allows access only to BILLING_STAFF users."""
 
     def has_permission(self, request, view):
-        return (
-            request.user
-            and request.user.is_authenticated
-            and request.user.role == "BILLING_STAFF"
-        )
+        return _has_role(request, {"BILLING_STAFF"})
 
 
-class IsStaffMember(BasePermission):
+class IsStaff(BasePermission):
     """Allows access to any staff role (DOCTOR, NURSE, BILLING_STAFF, ADMIN)."""
 
     STAFF_ROLES = {"DOCTOR", "NURSE", "BILLING_STAFF", "ADMIN"}
 
     def has_permission(self, request, view):
-        return (
-            request.user
-            and request.user.is_authenticated
-            and request.user.role in self.STAFF_ROLES
-        )
+        return _has_role(request, self.STAFF_ROLES)
+
+
+class IsStaffMember(IsStaff):
+    """Backward-compatible alias for existing imports."""
 
 
 class IsOwnerOrAdmin(BasePermission):
