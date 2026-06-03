@@ -51,7 +51,7 @@ const MOCK_PROFILE = {
 };
 
 export default function usePatientProfile() {
-  const { user, setUser } = useAuth();
+  const { user, updateUser } = useAuth();
 
   const [profile, setProfile] = useState(null);
   const [formData, setFormData] = useState({});
@@ -79,6 +79,7 @@ export default function usePatientProfile() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchProfile();
   }, [fetchProfile]);
 
@@ -144,14 +145,11 @@ export default function usePatientProfile() {
 
       /* Sync user context (name may have changed) */
       if (user) {
-        const updatedUser = {
-          ...user,
+        updateUser({
           name: `${payload.first_name} ${payload.last_name}`,
           first_name: payload.first_name,
           last_name: payload.last_name,
-        };
-        setUser(updatedUser);
-        sessionStorage.setItem('user', JSON.stringify(updatedUser));
+        });
       }
     } catch (err) {
       const parsed = parseApiError(err);
@@ -159,7 +157,7 @@ export default function usePatientProfile() {
     } finally {
       setSaving(false);
     }
-  }, [formData, profile, user, setUser]);
+  }, [formData, profile, user, updateUser]);
 
   return {
     profile,

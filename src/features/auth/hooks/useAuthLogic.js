@@ -115,9 +115,13 @@ export function useSignUpLogic() {
 
       setIsSubmitting(true);
       try {
-        // TODO: Wire to actual signup API endpoint when backend is ready
-        // const deviceId = getDeviceId();
-        // await authApi.signup({ first_name: firstName, last_name: lastName, email, password, patient_id: patientId, device_id: deviceId });
+        await authApi.register({
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
+          email: email.trim(),
+          password,
+          role: 'PATIENT',
+        });
 
         navigate('/auth/login', {
           state: { message: 'Account created successfully. Please log in.' },

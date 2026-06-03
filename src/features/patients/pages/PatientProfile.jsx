@@ -19,7 +19,6 @@ import {
   IoCheckmarkOutline,
   IoPersonOutline,
   IoCallOutline,
-  IoMailOutline,
   IoMedkitOutline,
   IoLocationOutline,
   IoAlertCircleOutline,

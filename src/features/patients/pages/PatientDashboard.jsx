@@ -21,10 +21,8 @@ import {
   IoCloudUploadOutline,
   IoDownloadOutline,
   IoCardOutline,
-  IoShieldCheckmarkOutline,
   IoPersonOutline,
   IoCalendarOutline,
-  IoTrendingUpOutline,
 } from 'react-icons/io5';
 import './PatientPages.css';
 
@@ -151,13 +149,7 @@ export default function PatientDashboard() {
 
   const handleConsentToggle = useCallback(() => {
     setConsentEnabled((prev) => !prev);
-    // TODO: call consentApi.updateConsent({ grant_data_access: !consentEnabled })
-  }, [consentEnabled]);
-
-  /* Update consent state once dashboard data arrives */
-  if (dashboardData?.consent && consentEnabled !== dashboardData.consent.grant_data_access) {
-    // Only set on initial load — controlled afterward
-  }
+  }, []);
 
   if (loading) {
     return (
