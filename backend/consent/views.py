@@ -38,32 +38,7 @@ from .serializers import (
 #   - Filter active/inactive via ?is_active=true
 #   - Permission: IsAuthenticated
 # ──────────────────────────────────────────────────────
-class ConsentListView(generics.ListAPIView):
-    """List consents for a specific patient."""
-    serializer_class = ConsentSerializer
-    permission_classes = [IsAuthenticated]
 
-    def get_queryset(self):
-        patient_id = self.kwargs.get("patient_id")
-        Patient = apps.get_model('patients', 'Patient')
-        patient = get_object_or_404(Patient, id=patient_id)
-
-        # Enforce that request.user owns this patient OR is staff
-        is_owner = getattr(patient, 'user', None) == self.request.user
-        is_staff = getattr(self.request.user, 'is_staff', False)
-        
-        if not (is_owner or is_staff):
-            raise PermissionDenied("You do not have permission to view these consent records.")
-
-        queryset = Consent.objects.filter(patient=patient)
-
-        # Optional filter: ?is_active=true/false
-        is_active_param = self.request.query_params.get("is_active")
-        if is_active_param is not None:
-            is_active_bool = is_active_param.lower() == 'true'
-            queryset = queryset.filter(is_active=is_active_bool)
-
-        return queryset
 
 
 # ──────────────────────────────────────────────────────
@@ -76,10 +51,17 @@ class ConsentListView(generics.ListAPIView):
 #   - Log the grant in audit log
 #   - Permission: IsAuthenticated + IsPatient (must be the patient)
 # ──────────────────────────────────────────────────────
-class ConsentGrantView(generics.CreateAPIView):
-    """Grant a new consent (patient-scoped)."""
-    serializer_class = ConsentGrantSerializer
+
+
+class ConsentListGrantView(generics.ListCreateAPIView):
+    """List consents (GET) or grant a new one (POST) for a specific patient."""
     permission_classes = [IsAuthenticated]
+
+    # بنحدد انهي Serializer يشتغل بناءً على نوع الـ Request
+    def get_serializer_class(self):
+        if self.request.method == 'POST':
+            return ConsentGrantSerializer
+        return ConsentSerializer
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
@@ -88,19 +70,36 @@ class ConsentGrantView(generics.CreateAPIView):
         context['patient'] = get_object_or_404(Patient, id=patient_id)
         return context
 
+    # اللوجيك بتاع الـ GET
+    def get_queryset(self):
+        patient_id = self.kwargs.get("patient_id")
+        Patient = apps.get_model('patients', 'Patient')
+        patient = get_object_or_404(Patient, id=patient_id)
+
+        is_owner = getattr(patient, 'user', None) == self.request.user
+        is_staff = getattr(self.request.user, 'is_staff', False)
+        
+        if not (is_owner or is_staff):
+            raise PermissionDenied("You do not have permission to view these consent records.")
+
+        queryset = Consent.objects.filter(patient=patient)
+
+        is_active_param = self.request.query_params.get("is_active")
+        if is_active_param is not None:
+            is_active_bool = is_active_param.lower() == 'true'
+            queryset = queryset.filter(is_active=is_active_bool)
+
+        return queryset
+
+    # اللوجيك بتاع الـ POST
     def perform_create(self, serializer):
         patient = serializer.context.get('patient')
 
-        # Validate request.user is the patient with patient_id
         if getattr(patient, 'user', None) != self.request.user:
             raise PermissionDenied("You can only grant consent for your own records.")
 
         consent = serializer.save()
-
         # TODO (Kyrillos - Audit): Log consent grant in audit log
-        # audit_utils.log_action(user=self.request.user, action="CONSENT_GRANTED", target=consent.id)
-
-
 # ──────────────────────────────────────────────────────
 # TODO (Abdullah): Implement ConsentRevokeView
 #   - DELETE /api/v1/patients/<patient_id>/consents/<pk>

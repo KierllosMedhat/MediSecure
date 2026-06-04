@@ -17,8 +17,7 @@ from django.conf.urls.static import static
 from records.views import MedicalRecordListCreateView, MedicalRecordDetailView
 
 # Patient-scoped consent views (owned by Abdullah)
-from consent.views import ConsentListView, ConsentGrantView, ConsentRevokeView
-
+from consent.views import ConsentListGrantView, ConsentRevokeView
 # Document download (owned by Fadi) — lives under /documents/<id>/download
 from records.views import DocumentDownloadView
 from patients.views import PatientListView
@@ -62,22 +61,20 @@ urlpatterns = [
 
     # Consents under a patient — frontend: GET/POST/DELETE /patients/<id>/consents
     # (Abdullah's views, mounted under patients/ prefix)
+   
+    # Consents under a patient — frontend: GET/POST/DELETE /patients/<id>/consents
+    # (Abdullah's views, mounted under patients/ prefix)
     path(
         "api/v1/patients/<int:patient_id>/consents",
-        ConsentListView.as_view(),
-        name="patient-consent-list",
-    ),
-    path(
-        "api/v1/patients/<int:patient_id>/consents",
-        ConsentGrantView.as_view(),
-        name="patient-consent-grant",
+        ConsentListGrantView.as_view(),
+        name="patient-consent-list-grant",
     ),
     path(
         "api/v1/patients/<int:patient_id>/consents/<int:pk>",
         ConsentRevokeView.as_view(),
         name="patient-consent-revoke",
     ),
-
+   
     # Document download — frontend: GET /documents/<id>/download
     path(
         "api/v1/documents/<int:pk>/download",
