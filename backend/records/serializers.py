@@ -6,7 +6,7 @@ Serializers for medical records and document management.
 
 from rest_framework import serializers
 from .models import MedicalRecord, Document
-
+import os
 
 
 # ──────────────────────────────────────────────────────
@@ -44,15 +44,15 @@ class DocumentSerializer(serializers.ModelSerializer):
     def validate_file_path(self, value):
         # TODO (Fadi): Validate file size (max 50MB) and allowed types
         if value.size > 50 * 1024 * 1024:
-        raise serializers.ValidationError("File size must be less than 50MB.")
+            raise serializers.ValidationError("File size must be less than 50MB.")
 
-    ext = os.path.splitext(value.name)[-1].lower()
-    allowed_extensions = {".pdf", ".jpg", ".jpeg", ".png", ".dcm", ".csv"}
-    if ext not in allowed_extensions:
-        raise serializers.ValidationError(
-            f"Unsupported file type '{ext}'. Allowed: {allowed_extensions}"
-        )
-    return value
+        ext = os.path.splitext(value.name)[-1].lower()
+        allowed_extensions = {".pdf", ".jpg", ".jpeg", ".png", ".dcm", ".csv"}
+        if ext not in allowed_extensions:
+            raise serializers.ValidationError(
+                f"Unsupported file type '{ext}'. Allowed: {allowed_extensions}"
+            )
+            return value
 
     def create(self, validated_data):
         # TODO (Fadi): Auto-set uploaded_by from request.user
@@ -136,10 +136,10 @@ class MedicalRecordDetailSerializer(serializers.ModelSerializer):
     def get_created_by_name(self, obj):
         # TODO (Fadi): Return creator's full name
        user = obj.created_by
-        if user is None:
-            return None
-        parts = [user.first_name, user.middle_name, user.last_name]
-        return " ".join(p for p in parts if p).strip() or user.email
+       if user is None:
+          return None
+          parts = [user.first_name, user.middle_name, user.last_name]
+          return " ".join(p for p in parts if p).strip() or user.email
 
     def create(self, validated_data):
         # TODO (Fadi): Auto-set created_by from request.user
