@@ -18,10 +18,14 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.exceptions import PermissionDenied
 from django.shortcuts import redirect
+from django.shortcuts import get_object_or_404
+from django.core.exceptions import ObjectDoesNotExist
 from django.http import FileResponse
 from django.conf import settings
 from .models import MedicalRecord, Document
 from consent.models import Consent
+from patients.models import Patient
+from staff.models import Staff
 from .serializers import (
     MedicalRecordListSerializer,
     MedicalRecordDetailSerializer,
@@ -58,6 +62,27 @@ class MedicalRecordListCreateView(generics.ListCreateAPIView):
         # TODO (Fadi): Filter by patient_id from URL or from query params
         # TODO (Fadi): Apply optional filters: record_type, from_date
         # TODO (Fadi): Enforce patient can only see own records
+      
+
+        UserRole = self.request.user.role
+        curr_staff=None
+        if UserRole == 'PATIENT':
+            patientProfile = self.request.user.patient_profile
+            if patientProfile.id != patient_id:
+                raise PermissionDenied("You do not have permission to view this record")
+        elif UserRole == "DOCTOR" or UserRole == "NURSE" or UserRole == "BILLING_STAFF":
+            try:
+              curr_staff = self.request.user.staff_profile
+            except ObjectDoesNotExist:
+              raise PermissionDenied("Only staff members can view records.")
+
+
+            consent = Consent.objects.filter(patient=patient_id, staff=curr_staff,is_active=True).first()
+            if not consent:
+                raise PermissionDenied("You do not have permission to view this record")
+            
+
+
         patientRecords = None
 
         specificRecordType = self.request.query_params.get("record_type")
@@ -70,12 +95,9 @@ class MedicalRecordListCreateView(generics.ListCreateAPIView):
             patientRecords = patientRecords.filter(created_at__gte=specificFromDate,patient=patient_id)
         else:
             patientRecords = patientRecords.filter(patient=patient_id)
-        
 
-        accessing_user = self.request.user
-        user_profile = accessing_user.patient_profile
-        if user_profile.id != patient_id:
-            raise PermissionDenied("You do not have permission to view this record")
+        patientRecords = patientRecords.order_by("-created_at")
+        
         return patientRecords
 
     def perform_create(self, serializer):
@@ -109,7 +131,7 @@ class MedicalRecordDetailView(generics.RetrieveUpdateDestroyAPIView):
         if UserRole == "DOCTOR" or UserRole == "NURSE" or UserRole == "BILLING_STAFF":
             currstaff = self.request.user.staff_profile
             if patient_id:
-                 consent = Consent.objects.filter(patient=record.patient, staff=currstaff,is_active=True).first()
+                 consent = Consent.objects.filter(patient=patient_id, staff=currstaff,is_active=True).first()
             if not consent:
                 raise PermissionDenied("You do not have permission to view this record")
         
@@ -149,10 +171,10 @@ class DocumentListView(generics.ListAPIView):
         )
         
         try:
-            curr_staff = request.user.staff_profile
+            curr_staff = self.request.user.staff_profile
         except ObjectDoesNotExist:
             raise PermissionDenied("Only staff members can view documents.")
-        consent = Consent.objects.filter(patient=record.patient, staff=currstaff,is_active=True).first()
+        consent = Consent.objects.filter(patient=record.patient, staff=curr_staff,is_active=True).first()
         if not consent:
             raise PermissionDenied("You do not have permission to view this record")
         
@@ -186,7 +208,7 @@ class DocumentUploadView(generics.CreateAPIView):
         # TODO (Fadi): Validate record exists and request.user has access
         # TODO (Fadi): Auto-set uploaded_by, file_type, file_size
         # TODO (Fadi): Set record from URL record_id
-       target_record = get_object_or_404(
+        target_record = get_object_or_404(
             MedicalRecord.objects.select_related("patient"),
             id=record_id,
         )
@@ -228,11 +250,11 @@ class DocumentDownloadView(APIView):
         # TODO (Fadi): If local: return FileResponse(open(path, 'rb'), as_attachment=True)
         # TODO (Fadi): If S3: generate pre-signed URL and return redirect
         # TODO (Fadi): Log DOCUMENT_DOWNLOAD in audit log
-        target_document = get_object_or_404(
+        targetDocument = get_object_or_404(
             Document.objects.select_related("record__patient"),
             id=pk,
         )
-        target_record = target_document.record
+        target_record = targetDocument.record
         currstaff = self.request.user.staff_profile
         try:
             curr_staff = request.user.staff_profile
