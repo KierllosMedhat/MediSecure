@@ -8,6 +8,7 @@ from rest_framework import serializers
 from .models import MedicalRecord, Document
 
 
+
 # ──────────────────────────────────────────────────────
 # TODO (Fadi): Implement DocumentSerializer
 #   - Fields: id, record, uploaded_by, file_name, file_path,
@@ -19,7 +20,8 @@ from .models import MedicalRecord, Document
 #   - Validate allowed file types (PDF, PNG, JPG, DICOM, CSV)
 # ──────────────────────────────────────────────────────
 class DocumentSerializer(serializers.ModelSerializer):
-    uploaded_by_name = serializers.SerializerMethodField()
+
+    uploaded_by_name = serializers.SerializerMethodField(method_name="get_uploaded_by_name")
 
     class Meta:
         model = Document
@@ -32,17 +34,52 @@ class DocumentSerializer(serializers.ModelSerializer):
 
     def get_uploaded_by_name(self, obj):
         # TODO (Fadi): Return uploader's full name
-        pass
+        
+        user = obj.uploaded_by
+        if user is None:
+            return None
+        parts = [user.first_name, user.middle_name, user.last_name]
+        return " ".join(p for p in parts if p).strip() or user.email
 
     def validate_file_path(self, value):
         # TODO (Fadi): Validate file size (max 50MB) and allowed types
-        pass
+        if value.size > 50 * 1024 * 1024:
+        raise serializers.ValidationError("File size must be less than 50MB.")
+
+    ext = os.path.splitext(value.name)[-1].lower()
+    allowed_extensions = {".pdf", ".jpg", ".jpeg", ".png", ".dcm", ".csv"}
+    if ext not in allowed_extensions:
+        raise serializers.ValidationError(
+            f"Unsupported file type '{ext}'. Allowed: {allowed_extensions}"
+        )
+    return value
 
     def create(self, validated_data):
         # TODO (Fadi): Auto-set uploaded_by from request.user
         # TODO (Fadi): Auto-detect file_type from extension
         # TODO (Fadi): Calculate file_size from uploaded file
-        pass
+
+        
+        request = self.context["request"]
+        uploaded_file = validated_data["file_path"]
+
+        # Inline extension → FileType mapping (replaces FileType.from_upload())
+        ext = os.path.splitext(uploaded_file.name)[-1].lower()
+        file_type_map = {
+            ".pdf":  Document.FileType.PDF,
+            ".jpg":  Document.FileType.IMAGE,
+            ".jpeg": Document.FileType.IMAGE,
+            ".png":  Document.FileType.IMAGE,
+            ".dcm":  Document.FileType.DICOM,
+            ".csv":  Document.FileType.CSV,
+        }
+
+        validated_data["uploaded_by"] = request.user
+        validated_data["file_size"]   = uploaded_file.size
+        validated_data["file_type"]   = file_type_map.get(ext, Document.FileType.OTHER)
+        validated_data["file_name"]   = validated_data.get("file_name") or os.path.basename(uploaded_file.name)
+
+        return Document.objects.create(**validated_data)
 
 
 # ──────────────────────────────────────────────────────
@@ -53,8 +90,8 @@ class DocumentSerializer(serializers.ModelSerializer):
 #   - Used for list views (lightweight, no description)
 # ──────────────────────────────────────────────────────
 class MedicalRecordListSerializer(serializers.ModelSerializer):
-    created_by_name = serializers.SerializerMethodField()
-    document_count = serializers.SerializerMethodField()
+    created_by_name = serializers.SerializerMethodField(method_name="get_created_by_name")
+    document_count = serializers.SerializerMethodField(method_name="get_document_count")
 
     class Meta:
         model = MedicalRecord
@@ -65,11 +102,15 @@ class MedicalRecordListSerializer(serializers.ModelSerializer):
 
     def get_created_by_name(self, obj):
         # TODO (Fadi): Return creator's full name
-        pass
+        user = obj.created_by
+        if user is None:
+            return None
+        parts = [user.first_name, user.middle_name, user.last_name]
+        return " ".join(p for p in parts if p).strip() or user.email
 
     def get_document_count(self, obj):
         # TODO (Fadi): Return obj.documents.count()
-        pass
+        return obj.document_count
 
 
 # ──────────────────────────────────────────────────────
@@ -94,11 +135,16 @@ class MedicalRecordDetailSerializer(serializers.ModelSerializer):
 
     def get_created_by_name(self, obj):
         # TODO (Fadi): Return creator's full name
-        pass
+       user = obj.created_by
+        if user is None:
+            return None
+        parts = [user.first_name, user.middle_name, user.last_name]
+        return " ".join(p for p in parts if p).strip() or user.email
 
     def create(self, validated_data):
         # TODO (Fadi): Auto-set created_by from request.user
-        pass
+        validated_data['created_by'] = self.context['request'].user
+        return super().create(validated_data)
 
 
 # ──────────────────────────────────────────────────────
