@@ -13,7 +13,12 @@ import appointmentApi from '../../../api/services/appointmentService';
 import { IoArrowBackOutline, IoCalendarOutline } from 'react-icons/io5';
 import './AppointmentPages.css';
 
-const TYPES = ['Check-up', 'Follow-up', 'Consultation', 'Emergency', 'Lab Work', 'Imaging'];
+const TYPES = [
+  { value: 'IN_PERSON', label: 'In-Person' },
+  { value: 'TELEMEDICINE', label: 'Telemedicine' },
+  { value: 'FOLLOW_UP', label: 'Follow-Up' },
+  { value: 'EMERGENCY', label: 'Emergency' },
+];
 const DURATIONS = [15, 30, 45, 60, 90, 120];
 
 const INIT = {
@@ -50,11 +55,25 @@ export default function CreateAppointment() {
     setLoading(true);
     setAlert(null);
     try {
-      await appointmentApi.createAppointment({ ...form, duration_min: Number(form.duration_min) });
+      const payload = {
+        ...form,
+        patient: Number(form.patient_id),
+        staff: Number(form.staff_id),
+        appointment_type: form.type,
+        duration_min: Number(form.duration_min)
+      };
+      delete payload.patient_id;
+      delete payload.staff_id;
+      delete payload.type;
+      
+      await appointmentApi.createAppointment(payload);
       setAlert({ type: 'success', message: 'Appointment created successfully!' });
       setTimeout(() => navigate('/appointments'), 1200);
     } catch (err) {
-      setAlert({ type: 'error', message: err.response?.data?.message || 'Failed to create appointment.' });
+      const msg = err.response?.data 
+        ? JSON.stringify(err.response.data) 
+        : 'Failed to create appointment.';
+      setAlert({ type: 'error', message: msg });
     } finally {
       setLoading(false);
     }
@@ -89,7 +108,7 @@ export default function CreateAppointment() {
                 <label htmlFor="appt-type" className="input-group__label">Appointment Type</label>
                 <select id="appt-type" className={`appt-form-select ${errors.type ? 'input-group__field--error' : ''}`} value={form.type} onChange={set('type')}>
                   <option value="">Select type…</option>
-                  {TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                  {TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
                 </select>
                 {errors.type && <span className="input-group__error">{errors.type}</span>}
               </div>

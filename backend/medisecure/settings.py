@@ -66,7 +66,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    # TODO (Kyrillos): Add AuditLogMiddleware here once implemented
+    "audit.middleware.AuditLogMiddleware",
 ]
 
 ROOT_URLCONF = "medisecure.urls"

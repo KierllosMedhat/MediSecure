@@ -49,8 +49,9 @@ export default function AuditLogsPage() {
     const fetch = async () => {
       try {
         const res = await auditApi.getAuditLogs();
-        setLogs(res.data);
-        setFiltered(res.data);
+        const data = res.data.results || res.data;
+        setLogs(data);
+        setFiltered(data);
       } catch {
         setLogs(DUMMY_LOGS);
         setFiltered(DUMMY_LOGS);
@@ -63,7 +64,10 @@ export default function AuditLogsPage() {
     let result = [...logs];
     if (userFilter.trim()) {
       const q = userFilter.toLowerCase();
-      result = result.filter((l) => l.user.toLowerCase().includes(q));
+      result = result.filter((l) => 
+        (l.user_email && l.user_email.toLowerCase().includes(q)) || 
+        (l.user_name && l.user_name.toLowerCase().includes(q))
+      );
     }
     if (entityFilter !== 'All') result = result.filter((l) => l.entity_type === entityFilter);
     if (actionFilter !== 'All') result = result.filter((l) => l.action === actionFilter);
@@ -80,11 +84,14 @@ export default function AuditLogsPage() {
 
   const columns = [
     { key: 'timestamp', label: 'Timestamp', render: (v) => fmtTs(v) },
-    { key: 'user', label: 'User' },
+    { key: 'user_email', label: 'User' },
     { key: 'action', label: 'Action' },
     { key: 'entity_type', label: 'Entity Type' },
     { key: 'entity_id', label: 'Entity ID' },
-    { key: 'details', label: 'Details', render: (v) => <span className="audit-details-cell" title={v}>{v}</span> },
+    { key: 'details', label: 'Details', render: (v) => {
+        const text = typeof v === 'object' && v !== null ? JSON.stringify(v) : String(v || '');
+        return <span className="audit-details-cell" title={text}>{text}</span>;
+    } },
     { key: 'ip_address', label: 'IP Address' },
   ];
 

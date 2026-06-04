@@ -28,8 +28,14 @@ const DUMMY_HOSPITALS = [
 ];
 
 const DEPARTMENTS = [
-  'Cardiology', 'Radiology', 'Emergency', 'Neurology',
-  'Pediatrics', 'Orthopedics', 'Finance', 'Administration',
+  { value: 'CARDIOLOGY', label: 'Cardiology' },
+  { value: 'RADIOLOGY', label: 'Radiology' },
+  { value: 'EMERGENCY', label: 'Emergency' },
+  { value: 'NEUROLOGY', label: 'Neurology' },
+  { value: 'PEDIATRICS', label: 'Pediatrics' },
+  { value: 'ORTHOPEDICS', label: 'Orthopedics' },
+  { value: 'BILLING', label: 'Finance' },
+  { value: 'ADMIN', label: 'Administration' },
 ];
 
 const INITIAL_FORM = {
@@ -39,6 +45,7 @@ const INITIAL_FORM = {
   last_name: '',
   phone_number: '',
   role: 'DOCTOR',
+  password: '',
   hospital_id: '',
   department: '',
   license_no: '',
@@ -61,7 +68,8 @@ export default function StaffForm() {
     const fetchHospitals = async () => {
       try {
         const res = await hospitalApi.getHospitals();
-        setHospitals(res.data);
+        const data = res.data.results || res.data;
+        setHospitals(data);
       } catch {
         // Use dummy data on failure
         setHospitals(DUMMY_HOSPITALS);
@@ -110,6 +118,8 @@ export default function StaffForm() {
     if (!form.first_name.trim()) newErrors.first_name = 'First name is required';
     if (!form.last_name.trim()) newErrors.last_name = 'Last name is required';
     if (!form.phone_number.trim()) newErrors.phone_number = 'Phone number is required';
+    if (!isEdit && !form.password.trim()) newErrors.password = 'Password is required for new staff';
+    if (!isEdit && form.password.length < 8) newErrors.password = 'Password must be at least 8 characters';
     if (!form.hospital_id) newErrors.hospital_id = 'Hospital is required';
     if (!form.department.trim()) newErrors.department = 'Department is required';
     if (!form.license_no.trim()) newErrors.license_no = 'License number is required';
@@ -126,11 +136,18 @@ export default function StaffForm() {
     setAlert(null);
 
     try {
+      // Map hospital_id to hospital for backend DRF
+      const payload = { ...form, hospital: form.hospital_id };
+      delete payload.hospital_id;
+
       if (isEdit) {
-        await staffApi.updateStaff(id, form);
+        // Password shouldn't be sent on update unless we are explicitly changing it.
+        // For now, remove it from update payload.
+        delete payload.password;
+        await staffApi.updateStaff(id, payload);
         setAlert({ type: 'success', message: 'Staff member updated successfully.' });
       } else {
-        await staffApi.createStaff(form);
+        await staffApi.createStaff(payload);
         setAlert({ type: 'success', message: 'Staff member created successfully.' });
       }
       setTimeout(() => navigate('/staff/list'), 1200);
@@ -212,6 +229,17 @@ export default function StaffForm() {
                   <option value="ADMIN">Admin</option>
                 </select>
               </div>
+              {!isEdit && (
+                <Input
+                  id="staff-password"
+                  label="Temporary Password"
+                  type="password"
+                  value={form.password}
+                  onChange={handleChange('password')}
+                  error={errors.password}
+                  placeholder="Min 8 characters"
+                />
+              )}
               <Input
                 id="staff-first-name"
                 label="First Name"
@@ -263,7 +291,7 @@ export default function StaffForm() {
                 >
                   <option value="">Select hospital…</option>
                   {hospitals.map((h) => (
-                    <option key={h.hospital_id} value={h.hospital_id}>
+                    <option key={h.id || h.hospital_id} value={h.id || h.hospital_id}>
                       {h.name}
                     </option>
                   ))}
@@ -282,7 +310,7 @@ export default function StaffForm() {
                 >
                   <option value="">Select department…</option>
                   {DEPARTMENTS.map((d) => (
-                    <option key={d} value={d}>{d}</option>
+                    <option key={d.value} value={d.value}>{d.label}</option>
                   ))}
                 </select>
                 {errors.department && (

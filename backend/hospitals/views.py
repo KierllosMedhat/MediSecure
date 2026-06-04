@@ -27,8 +27,7 @@ class HospitalListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        # TODO (Fadi): Return hospitals with search/filter
-        pass
+        return Hospital.objects.all()
 
 
 # ──────────────────────────────────────────────────────

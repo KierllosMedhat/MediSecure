@@ -22,6 +22,11 @@ from consent.views import ConsentListView, ConsentGrantView, ConsentRevokeView
 # Document download (owned by Fadi) — lives under /documents/<id>/download
 from records.views import DocumentDownloadView
 from patients.views import PatientListView
+from hospitals.views import HospitalListCreateView
+from staff.views import StaffListCreateView
+from appointments.views import AppointmentListCreateView
+from notifications.views import NotificationListView
+from audit.views import AuditLogListView
 
 urlpatterns = [
     # Django Admin
@@ -34,6 +39,7 @@ urlpatterns = [
 
     # ── Fadi ─────────────────────────────────────────────
     path("api/v1/records/", include("records.urls")),
+    path("api/v1/hospitals", HospitalListCreateView.as_view(), name="hospital-list-no-slash"),
     path("api/v1/hospitals/", include("hospitals.urls")),
 
     # ── Abdullah ─────────────────────────────────────────
@@ -41,9 +47,13 @@ urlpatterns = [
     path("api/v1/payments/", include("payments.urls")),
 
     # ── Kyrillos ─────────────────────────────────────────
+    path("api/v1/staff", StaffListCreateView.as_view(), name="staff-list-no-slash"),
     path("api/v1/staff/", include("staff.urls")),
+    path("api/v1/appointments", AppointmentListCreateView.as_view(), name="appt-list-no-slash"),
     path("api/v1/appointments/", include("appointments.urls")),
+    path("api/v1/notifications", NotificationListView.as_view(), name="notif-list-no-slash"),
     path("api/v1/notifications/", include("notifications.urls")),
+    path("api/v1/audit-logs", AuditLogListView.as_view(), name="audit-list-no-slash"),
     path("api/v1/audit-logs/", include("audit.urls")),
 
     # ── Patient-scoped Routes ────────────────────────────

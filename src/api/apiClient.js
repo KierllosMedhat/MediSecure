@@ -12,25 +12,19 @@ import axios from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
 
-/* ---- In-memory token storage ---- */
-let accessToken = null;
-let refreshToken = null;
-
-/** Get the current access token from memory. */
+/* ---- Session storage token management ---- */
 export function getAccessToken() {
-  return accessToken;
+  return sessionStorage.getItem('accessToken');
 }
 
-/** Store both tokens in memory. */
 export function setTokens(access, refresh) {
-  accessToken = access;
-  refreshToken = refresh;
+  if (access) sessionStorage.setItem('accessToken', access);
+  if (refresh) sessionStorage.setItem('refreshToken', refresh);
 }
 
-/** Clear all tokens from memory. */
 export function clearTokens() {
-  accessToken = null;
-  refreshToken = null;
+  sessionStorage.removeItem('accessToken');
+  sessionStorage.removeItem('refreshToken');
 }
 
 /* ---- Axios instance ---- */
@@ -45,8 +39,9 @@ const apiClient = axios.create({
 /* ---- Request Interceptor: Attach JWT ---- */
 apiClient.interceptors.request.use(
   (config) => {
-    if (accessToken) {
-      config.headers.Authorization = `Bearer ${accessToken}`;
+    const token = getAccessToken();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
@@ -89,11 +84,12 @@ apiClient.interceptors.response.use(
       isRefreshing = true;
 
       try {
+        const refresh = sessionStorage.getItem('refreshToken');
         const { data } = await axios.post(`${API_BASE_URL}/auth/refresh`, {
-          refresh: refreshToken,
+          refresh: refresh,
         });
 
-        setTokens(data.access, refreshToken);
+        setTokens(data.access, refresh);
 
         apiClient.defaults.headers.common.Authorization = `Bearer ${data.access}`;
         processQueue(null, data.access);

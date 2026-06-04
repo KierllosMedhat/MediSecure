@@ -123,8 +123,9 @@ export default function AppointmentsList() {
     const fetchAppointments = async () => {
       try {
         const res = await appointmentApi.getAppointments();
-        setAppointments(res.data);
-        setFiltered(res.data);
+        const data = res.data.results || res.data;
+        setAppointments(data);
+        setFiltered(data);
       } catch {
         // Use dummy data
         setAppointments(DUMMY_APPOINTMENTS);

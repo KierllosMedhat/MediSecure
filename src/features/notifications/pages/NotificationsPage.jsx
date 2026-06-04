@@ -85,7 +85,8 @@ export default function NotificationsPage() {
     const fetch = async () => {
       try {
         const res = await notificationApi.getNotifications();
-        setNotifications(res.data);
+        const data = res.data.results || res.data;
+        setNotifications(data);
       } catch {
         setNotifications(DUMMY_NOTIFICATIONS);
       }

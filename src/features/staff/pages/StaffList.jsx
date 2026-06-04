@@ -118,8 +118,9 @@ export default function StaffList() {
     const fetchStaff = async () => {
       try {
         const response = await staffApi.getStaffList();
-        setStaff(response.data);
-        setFilteredStaff(response.data);
+        const data = response.data.results || response.data;
+        setStaff(data);
+        setFilteredStaff(data);
       } catch {
         // Use dummy data on failure (no backend yet)
         setStaff(DUMMY_STAFF);
@@ -136,7 +137,7 @@ export default function StaffList() {
       label: 'Name',
       render: (_, row) => (
         <span style={{ fontWeight: 'var(--font-weight-semibold)', color: 'var(--color-text-primary)' }}>
-          {row.first_name} {row.last_name}
+          {row.full_name}
         </span>
       ),
     },
@@ -146,7 +147,7 @@ export default function StaffList() {
       render: (value) => <StatusBadge status={value} />,
     },
     { key: 'department', label: 'Department' },
-    { key: 'hospital', label: 'Hospital' },
+    { key: 'hospital_name', label: 'Hospital' },
     { key: 'license_no', label: 'License No.' },
     {
       key: 'status',
