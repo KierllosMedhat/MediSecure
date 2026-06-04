@@ -147,6 +147,7 @@ class DocumentListView(generics.ListAPIView):
             MedicalRecord.objects.select_related("patient"),
             id=record_id,
         )
+        
         try:
             curr_staff = request.user.staff_profile
         except ObjectDoesNotExist:
