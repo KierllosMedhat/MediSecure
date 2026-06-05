@@ -109,7 +109,8 @@ if(!values.files.length){
 }
 
 
-      dummySubmit(values);
+      //dummySubmit(values);
+      formSubmit(values);
       setSubmitting(false);
     },
     validationSchema:recordValidationSchema,
@@ -133,7 +134,7 @@ if(!values.files.length){
     if(returnedRecordId){
      try{
 for (const rawfile of rawfiles){
-  //await recordsApi.uploadDocument(returnedRecordId,rawfile);
+  await recordsApi.uploadDocument(returnedRecordId,rawfile);
 }
 await new Promise((resolve) => setTimeout(resolve, 800)); // demo delay
 alert(`Upload success: ${files.length} files have been uploaded to record ${returnedRecordId }`);
@@ -197,14 +198,20 @@ const handleUpload = async () => {
 
     SetRawFiles([...rawfiles,formData]);
 
+// date adjustment
+const now = new Date();
+const year = now.getFullYear();
+const month = String(now.getMonth() + 1).padStart(2, "0");
+const day = String(now.getDate()).padStart(2, "0");
+
     const newDocument = {
       document_id: nextDocID,
       record_id: 102,
       file_name: file.name,
-      file_path: `/uploads/records/102/${file.name}.${file.type}`,
+      file_path: `documents/${year}/${month}/${day}/${file.name}`,
       file_type: file.type,
       file_size: file.size,
-      uploaded_By: patientId,
+      uploaded_by: patientId,
       created_at: `${new Date().toLocaleString()}`
 
     }

@@ -23,10 +23,13 @@ import recordsApi from '../../../api/services/recordsService';
 import { useState, useEffect, useRef } from 'react';
 import DragAndDropFileUpload from '../components/DragAndDropFileUpload';
 import DocumentSection from '../components/DocumentSection';
+import {useAuth} from '../../auth/hooks/useAuth';
+import patientApi from '../../../api/services/patientService';
 export default function RecordDetail() {
-  //const { id: patientId, recordId } = useParams();
+  const { recordId } = useParams();
   const location = useLocation();
-const {patientId,recordId} = location.state;
+var {patientId} = location.state;
+const {user} = useAuth();
   const navigate = useNavigate();
 
   // dummy data for testing
@@ -137,11 +140,17 @@ const {patientId,recordId} = location.state;
       const formData = new FormData();
       formData.append("file", file);
 
+      // date adjustment
+      const now = new Date();
+const year = now.getFullYear();
+const month = String(now.getMonth() + 1).padStart(2, "0");
+const day = String(now.getDate()).padStart(2, "0");
+
       const newDocument = {
         document_id: nextDocID,
         record_id: recordId,
         file_name: file.name,
-        file_path: `/uploads/records/${recordId}/${file.name}.${file.type}`,
+        file_path: `documents/${year}/${month}/${day}/${file.name}`,
         file_type: file.type,
         file_size: file.size,
         uploaded_By: patientId,
@@ -152,7 +161,7 @@ const {patientId,recordId} = location.state;
       //add to documents
       setDocuments([...documents, newDocument]);
       setNextDocID(nextDocID + 1);
-      //await recordsApi.uploadDocument(recordId,formData);
+      await recordsApi.uploadDocument(recordId,formData);
 
       await new Promise((resolve) => setTimeout(resolve, 800)); // demo delay
       alert(`Upload success: ${file.name}`);
@@ -166,20 +175,39 @@ const {patientId,recordId} = location.state;
 
   }
 
-  const fetchRecord = async () => {
-    const response = await recordsApi.getRecordById(patientId, recordId);
+  const fetchRecord = async (id) => {
+    const response = await recordsApi.getRecordById(patientId, id);
     setRecord(response.data);
   }
   useEffect(() => {
 
-    if (Number(recordId) === 101) {
-      setRecord(DUMMY_RECORD_101);
-      return;
-    } else if (Number(recordId) === 102) {
-      setRecord(DUMMY_RECORD_102);
-      return;
-    }
+    // if (Number(recordId) === 101) {
+    //   setRecord(DUMMY_RECORD_101);
+    //   return;
+    // } else if (Number(recordId) === 102) {
+    //   setRecord(DUMMY_RECORD_102);
+    //   return;
+    // }
 
+
+    const initialize = async () => {
+      try {
+          const userProfile = await patientApi.getProfile();
+          console.log("userProfile:", userProfile);
+          const id = userProfile.data.id;
+          console.log("id:", id);
+          //setPatientId(id);
+          patientId=id;
+          await fetchRecord(recordId);  // pass id directly, don't rely on state
+      } catch (error) {
+          console.error("Could not fetch patient:", error);
+          //setPatientId(1);
+          //setRecords(DUMMY_RECORDS_FOR_PATIENT_1);
+      }
+  };
+if((patientId == undefined)||(patientId == null)){
+  initialize();
+}
     const run = async () => {
       try {
         await fetchRecord();
@@ -187,23 +215,23 @@ const {patientId,recordId} = location.state;
         setRecError(error);
       }
     }
-    //run();
+    run();
   }, []);
 
   const fetchDocuments = async () => {
     const documents = await recordsApi.getDocumentsByRecord(recordId);
-    setDocuments(documents.data)
+    setDocuments(documents.data.results)
   }
 
   useEffect(() => {
 
-    if (Number(recordId) === 101) {
-      setDocuments(DUMMY_DOCUMENTS_FOR_RECORD_101);
-      return;
-    } else if (Number(recordId) === 102) {
-      setDocuments(DUMMY_DOCUMENTS_FOR_RECORD_102);
-      return;
-    }
+    // if (Number(recordId) === 101) {
+    //   setDocuments(DUMMY_DOCUMENTS_FOR_RECORD_101);
+    //   return;
+    // } else if (Number(recordId) === 102) {
+    //   setDocuments(DUMMY_DOCUMENTS_FOR_RECORD_102);
+    //   return;
+    // }
 
     const run = async () => {
       try {
@@ -212,7 +240,7 @@ const {patientId,recordId} = location.state;
         setDocError(error);
       }
     }
-    //if(record) run();
+    if(record) run();
   }, [record])
 
 

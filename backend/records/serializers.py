@@ -110,7 +110,7 @@ class MedicalRecordListSerializer(serializers.ModelSerializer):
 
     def get_document_count(self, obj):
         # TODO (Fadi): Return obj.documents.count()
-        return obj.document_count
+        return obj.documents.count()
 
 
 # ──────────────────────────────────────────────────────

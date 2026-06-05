@@ -88,13 +88,13 @@ class MedicalRecordListCreateView(generics.ListCreateAPIView):
         specificRecordType = self.request.query_params.get("record_type")
         specificFromDate = self.request.query_params.get("from_date")
         if specificRecordType and specificFromDate:
-             patientRecords = patientRecords.filter(created_at__gte=specificFromDate,record_type=specificRecordType,patient=patient_id)
+             patientRecords = MedicalRecord.objects.filter(created_at__gte=specificFromDate,record_type=specificRecordType,patient=patient_id).all()
         elif specificRecordType:
-            patientRecords = patientRecords.filter(record_type=specificRecordType,patient=patient_id)
+            patientRecords = MedicalRecord.objects.filter(record_type=specificRecordType,patient=patient_id).all()
         elif specificFromDate:
-            patientRecords = patientRecords.filter(created_at__gte=specificFromDate,patient=patient_id)
+            patientRecords = MedicalRecord.objects.filter(created_at__gte=specificFromDate,patient=patient_id).all()
         else:
-            patientRecords = patientRecords.filter(patient=patient_id)
+            patientRecords = MedicalRecord.objects.filter(patient=patient_id).all()
 
         patientRecords = patientRecords.order_by("-created_at")
         
@@ -120,30 +120,43 @@ class MedicalRecordDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        patient_id = self.kwargs.get("patient_id")
-        UserRole = self.request.user.role
-        
-        # TODO (Fadi): Filter by patient_id if present (from patient-scoped URL)
-        # TODO (Fadi): Otherwise return all records visible to request.user
+       patient_id = self.kwargs.get("patient_id")
+       user_role = self.request.user.role
 
-        
-        record = MedicalRecord.objects.get(id=self.kwargs.get("record_id"))
-        if UserRole == "DOCTOR" or UserRole == "NURSE" or UserRole == "BILLING_STAFF":
-            currstaff = self.request.user.staff_profile
+       if user_role == "PATIENT":
+            return MedicalRecord.objects.filter(
+                patient=self.request.user.patient_profile
+            )
+
+       if user_role in ("DOCTOR", "NURSE", "BILLING_STAFF"):
+            try:
+                curr_staff = self.request.user.staff_profile
+            except ObjectDoesNotExist:
+                raise PermissionDenied("Staff profile not found.")
+
             if patient_id:
-                 consent = Consent.objects.filter(patient=patient_id, staff=currstaff,is_active=True).first()
-            if not consent:
-                raise PermissionDenied("You do not have permission to view this record")
-        
-                return MedicalRecord.objects.filter(patient=patient_id)
+                has_consent = Consent.objects.filter(
+                    patient_id=patient_id,
+                    staff=curr_staff,
+                    is_active=True,
+                ).exists()
+
+                if not has_consent:
+                    raise PermissionDenied("You do not have consent to view this record.")
+
+                return MedicalRecord.objects.filter(patient_id=patient_id)
+
             else:
-                AvailableConsents = Consent.objects.filter(is_active=True,staff=currstaff)
-                if AvailableConsents.count() == 0:
-                    return []
-                allowedRecords = []
-                for consent in AvailableConsents:
-                    allowedRecords.append(consent.record)
-                return allowedRecords
+                consented_patients = Consent.objects.filter(
+                    staff=curr_staff,
+                    is_active=True,
+                ).values_list("patient_id", flat=True)
+
+                return MedicalRecord.objects.filter(
+                    patient_id__in=consented_patients
+                )
+
+            raise PermissionDenied("You do not have permission to view medical records.")
             
 
 # ──────────────────────────────────────────────────────
