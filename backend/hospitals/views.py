@@ -11,7 +11,7 @@ from core.permissions import IsAdmin
 
 from .models import Hospital
 from .serializers import HospitalSerializer
-
+from rest_framework.exceptions import PermissionDenied
 
 # ──────────────────────────────────────────────────────
 # TODO (Fadi): Implement HospitalListCreateView
@@ -27,7 +27,21 @@ class HospitalListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Hospital.objects.all()
+        if self.request.method == "POST" and self.request.user.role != "ADMIN":
+            raise PermissionDenied("Only admins can create hospitals.")
+        queryset = Hospital.objects.all()
+
+        # Filter by subscription tier e.g. ?subscription=PREMIUM
+        subscription = self.request.query_params.get("subscription")
+        if subscription:
+            queryset = queryset.filter(subscription=subscription)
+
+        # Search by name e.g. ?search=cairo
+        search = self.request.query_params.get("search")
+        if search:
+            queryset = queryset.filter(name__icontains=search)
+
+        return queryset
 
 
 # ──────────────────────────────────────────────────────
@@ -44,8 +58,11 @@ class HospitalDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         # TODO (Fadi): Return Hospital.objects.all()
-        pass
+        if self.request.method in ("PUT", "PATCH", "DELETE") and self.request.user.role != "ADMIN":
+            raise PermissionDenied("Only admins can modify or delete hospitals.")
+        return Hospital.objects.all()
 
     def perform_destroy(self, instance):
         # TODO (Fadi): Soft-delete — set is_active=False instead of deleting
-        pass
+        instance.is_active = False
+        instance.save()
