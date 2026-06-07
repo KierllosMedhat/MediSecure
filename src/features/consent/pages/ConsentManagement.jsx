@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import consentApi from "../../../api/services/consentService";
+import {useAuth} from '../../auth/hooks/useAuth';
+import patientApi from '../../../api/services/patientService';
 import {
   Card,
   Button,
@@ -11,19 +13,22 @@ import {
 import "./ConsentPages.css";
 
 export default function ConsentManagement() {
-  const { id: patientId } = useParams();
+
+  //const { id: patientId } = useParams();
+  const {user} = useAuth();
+  const [patientId,setPatientId] = useState(null);
 
   const [consents, setConsents] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setModalOpen] = useState(false);
-  const [newAccess, setNewAccess] = useState({ staff_id: "", purpose: "" });
+  const [newAccess, setNewAccess] = useState({ staff: "", purpose: "" });
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const fetchConsents = async () => {
-    if (!patientId) return;
+  const fetchConsents = async (id) => {
+    if (!id) return;
     setIsLoading(true);
     try {
-      const response = await consentApi.getConsents(patientId);
+      const response = await consentApi.getConsents(id);
       setConsents(response.data);
     } catch (error) {
       console.error("Error fetching consents:", error);
@@ -33,8 +38,24 @@ export default function ConsentManagement() {
   };
 
   useEffect(() => {
-    fetchConsents();
-  }, [patientId]);
+    const initialize = async () => {
+      try {
+          const userProfile = await patientApi.getProfile();
+          console.log("userProfile:", userProfile);
+          const id = userProfile.data.id;
+          console.log("id:", id);
+          setPatientId(id);
+          await fetchConsents(id);  // pass id directly, don't rely on state
+      } catch (error) {
+          console.error("Could not fetch patient:", error);
+          setPatientId(1);
+          
+      }
+  };
+
+  initialize();
+    
+  }, []);
 
   const handleGrantAccess = async (e) => {
     e.preventDefault();
@@ -46,16 +67,31 @@ export default function ConsentManagement() {
     };
 
     try {
+<<<<<<< HEAD
       await consentApi.grantConsent(patientId, payload);
+=======
+      await consentApi.grantConsent(patientId, {
+        staff: parseInt(newAccess.staff), // Converting to number as expected by JSDoc @param
+        purpose: newAccess.purpose,
+      });
+      console.log("granting consent with payload:", payload);  // ← check this
+        
+>>>>>>> 7faa6cf (resolving documents issue)
       setModalOpen(false);
-      setNewAccess({ staff_id: "", purpose: "" });
-      await fetchConsents();
+      setNewAccess({ staff: "", purpose: "" });
+      console.log
+      await fetchConsents(patientId);
     } catch (error) {
+<<<<<<< HEAD
       console.error("API Error:", error.response?.data);
       alert(
         "Error: " +
           JSON.stringify(error.response?.data || "Failed to grant access"),
       );
+=======
+      console.log("error response data:", error.response?.data);
+      //console.error("Error granting consent:", error);
+>>>>>>> 7faa6cf (resolving documents issue)
     } finally {
       setIsProcessing(false);
     }
@@ -69,7 +105,7 @@ export default function ConsentManagement() {
     ) {
       try {
         await consentApi.revokeConsent(patientId, consentId);
-        await fetchConsents();
+        await fetchConsents(patientId);
       } catch (error) {
         console.error("Error revoking consent:", error);
         alert("Failed to revoke consent.");
@@ -214,14 +250,39 @@ export default function ConsentManagement() {
               label="Staff ID"
               type="text"
               required
-              value={newAccess.staff_id}
+              value={newAccess.staff}
               onChange={(e) =>
+<<<<<<< HEAD
                 setNewAccess({ ...newAccess, staff_id: e.target.value })
               }
             />
 
             <div
               style={{ display: "flex", flexDirection: "column", gap: "5px" }}
+=======
+                setNewAccess({ ...newAccess, staff: e.target.value })
+              }
+            />
+           <select
+           label="Purpose of Access"
+    value={newAccess.purpose}
+    onChange={(e) => setNewAccess({ ...newAccess, purpose: e.target.value })}
+    required
+>
+    <option value="">Select purpose</option>
+    <option value="TREATMENT">Treatment</option>
+    <option value="RESEARCH">Research</option>
+    <option value="INSURANCE">Insurance</option>
+    <option value="BILLING">Billing</option>
+    <option value="EMERGENCY">Emergency</option>
+    <option value="REFERRAL">Referral</option>
+    <option value="OTHER">Other</option>
+</select>
+            <Button
+              type="submit"
+              disabled={isProcessing}
+              style={{ marginTop: "10px" }}
+>>>>>>> 7faa6cf (resolving documents issue)
             >
               <label style={{ fontSize: "0.9rem", fontWeight: "bold" }}>
                 Purpose of Access
