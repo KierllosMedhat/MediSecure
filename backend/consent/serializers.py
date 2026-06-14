@@ -111,12 +111,15 @@ class ConsentGrantSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
-        # Retrieve patient from the serializer context (passed from the view)
+        # Retrieve patient from the serializer context
         patient = self.context.get("patient")
         if not patient:
             raise serializers.ValidationError("Patient context is missing. Cannot grant consent.")
 
         validated_data['patient'] = patient
+        
+        # --- التعديل هنا: إجبار الحالة على True عند الإنشاء ---
+        validated_data['is_active'] = True 
 
         # Duplicate active consent check for safety
         if Consent.objects.filter(
