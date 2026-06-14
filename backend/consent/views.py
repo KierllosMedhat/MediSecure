@@ -56,8 +56,8 @@ from .serializers import (
 class ConsentListGrantView(generics.ListCreateAPIView):
     """List consents (GET) or grant a new one (POST) for a specific patient."""
     permission_classes = [IsAuthenticated]
+    pagination_class = None
 
-    # بنحدد انهي Serializer يشتغل بناءً على نوع الـ Request
     def get_serializer_class(self):
         if self.request.method == 'POST':
             return ConsentGrantSerializer
@@ -67,14 +67,25 @@ class ConsentListGrantView(generics.ListCreateAPIView):
         context = super().get_serializer_context()
         patient_id = self.kwargs.get("patient_id")
         Patient = apps.get_model('patients', 'Patient')
-        context['patient'] = get_object_or_404(Patient, id=patient_id)
+        
+        # Handle 'me' translation
+        if str(patient_id).lower() == "me":
+            patient = get_object_or_404(Patient, user=self.request.user)
+        else:
+            patient = get_object_or_404(Patient, id=patient_id)
+            
+        context['patient'] = patient
         return context
 
-    # اللوجيك بتاع الـ GET
     def get_queryset(self):
         patient_id = self.kwargs.get("patient_id")
         Patient = apps.get_model('patients', 'Patient')
-        patient = get_object_or_404(Patient, id=patient_id)
+        
+        # Handle 'me' translation
+        if str(patient_id).lower() == "me":
+            patient = get_object_or_404(Patient, user=self.request.user)
+        else:
+            patient = get_object_or_404(Patient, id=patient_id)
 
         is_owner = getattr(patient, 'user', None) == self.request.user
         is_staff = getattr(self.request.user, 'is_staff', False)
@@ -91,7 +102,7 @@ class ConsentListGrantView(generics.ListCreateAPIView):
 
         return queryset
 
-    # اللوجيك بتاع الـ POST
+    
     def perform_create(self, serializer):
         patient = serializer.context.get('patient')
 
@@ -100,6 +111,8 @@ class ConsentListGrantView(generics.ListCreateAPIView):
 
         consent = serializer.save()
         # TODO (Kyrillos - Audit): Log consent grant in audit log
+
+
 # ──────────────────────────────────────────────────────
 # TODO (Abdullah): Implement ConsentRevokeView
 #   - DELETE /api/v1/patients/<patient_id>/consents/<pk>
@@ -115,8 +128,16 @@ class ConsentRevokeView(APIView):
     permission_classes = [IsAuthenticated]
 
     def delete(self, request, patient_id, pk):
-        # Get consent by pk AND patient_id (both must match)
-        consent = get_object_or_404(Consent, pk=pk, patient_id=patient_id)
+        # Handle 'me' translation
+        if str(patient_id).lower() == "me":
+            Patient = apps.get_model('patients', 'Patient')
+            patient = get_object_or_404(Patient, user=request.user)
+            actual_patient_id = patient.id
+        else:
+            actual_patient_id = patient_id
+
+        # Get consent by pk AND actual_patient_id (both must match)
+        consent = get_object_or_404(Consent, pk=pk, patient_id=actual_patient_id)
 
         # Validate request.user owns this patient profile
         if getattr(consent.patient, 'user', None) != request.user:
