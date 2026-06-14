@@ -15,7 +15,6 @@ export default function ConsentManagement() {
 
   const [consents, setConsents] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-
   const [isModalOpen, setModalOpen] = useState(false);
   const [newAccess, setNewAccess] = useState({ staff_id: "", purpose: "" });
   const [isProcessing, setIsProcessing] = useState(false);
@@ -40,16 +39,23 @@ export default function ConsentManagement() {
   const handleGrantAccess = async (e) => {
     e.preventDefault();
     setIsProcessing(true);
+
+    const payload = {
+      staff: parseInt(newAccess.staff_id, 10),
+      purpose: newAccess.purpose,
+    };
+
     try {
-      await consentApi.grantConsent(patientId, {
-        staff_id: parseInt(newAccess.staff_id), // Converting to number as expected by JSDoc @param
-        purpose: newAccess.purpose,
-      });
+      await consentApi.grantConsent(patientId, payload);
       setModalOpen(false);
       setNewAccess({ staff_id: "", purpose: "" });
       await fetchConsents();
     } catch (error) {
-      console.error("Error granting consent:", error);
+      console.error("API Error:", error.response?.data);
+      alert(
+        "Error: " +
+          JSON.stringify(error.response?.data || "Failed to grant access"),
+      );
     } finally {
       setIsProcessing(false);
     }
@@ -66,6 +72,7 @@ export default function ConsentManagement() {
         await fetchConsents();
       } catch (error) {
         console.error("Error revoking consent:", error);
+        alert("Failed to revoke consent.");
       }
     }
   };
@@ -98,7 +105,7 @@ export default function ConsentManagement() {
       <div
         style={{
           display: "flex",
-          justify: "flex-end",
+          justifyContent: "flex-end",
           marginBottom: "1.5rem",
         }}
       >
@@ -122,7 +129,6 @@ export default function ConsentManagement() {
                 <th style={{ padding: "12px" }}>Purpose</th>
                 <th style={{ padding: "12px" }}>Date Granted</th>
                 <th style={{ padding: "12px" }}>Status</th>
-                <th style={{ padding: "12px" }}>Date Revoked</th>
                 <th style={{ padding: "12px", textAlign: "right" }}>Actions</th>
               </tr>
             </thead>
@@ -130,38 +136,38 @@ export default function ConsentManagement() {
               {consents.length > 0 ? (
                 consents.map((consent) => (
                   <tr
-                    key={consent.Consent_Id}
+                    key={consent.id || consent.Consent_Id}
                     style={{ borderBottom: "1px solid #eee" }}
                   >
-                    <td
-                      style={{
-                        padding: "12px",
-                        fontWeight: "bold",
-                        color: "#333",
-                      }}
-                    >
-                      {consent.Staff_Name || `Staff ID: ${consent.Staff_Id}`}
+                    <td style={{ padding: "12px", fontWeight: "bold" }}>
+                      {consent.Staff_Name ||
+                        `Staff ID: ${consent.Staff_Id || "N/A"}`}
                     </td>
-                    <td style={{ padding: "12px", color: "#666" }}>
-                      {consent.Purpose}
+                    <td style={{ padding: "12px" }}>
+                      {consent.Purpose || consent.purpose || "N/A"}
                     </td>
-                    <td style={{ padding: "12px", color: "#666" }}>
-                      {consent.granted_at}
+                    <td style={{ padding: "12px" }}>
+                      {consent.granted_at
+                        ? consent.granted_at.split("T")[0]
+                        : "-"}
                     </td>
                     <td style={{ padding: "12px" }}>
                       <StatusBadge
-                        status={consent.Is_Active ? "ACTIVE" : "REVOKED"}
+                        status={
+                          consent.Is_Active || consent.is_active
+                            ? "ACTIVE"
+                            : "REVOKED"
+                        }
                       />
                     </td>
-                    <td style={{ padding: "12px", color: "#999" }}>
-                      {consent.revoked_at || "-"}
-                    </td>
                     <td style={{ padding: "12px", textAlign: "right" }}>
-                      {consent.Is_Active ? (
+                      {consent.Is_Active || consent.is_active ? (
                         <Button
                           size="small"
                           variant="danger"
-                          onClick={() => handleRevokeAccess(consent.Consent_Id)}
+                          onClick={() =>
+                            handleRevokeAccess(consent.id || consent.Consent_Id)
+                          }
                         >
                           Revoke
                         </Button>
@@ -182,12 +188,8 @@ export default function ConsentManagement() {
               ) : (
                 <tr>
                   <td
-                    colSpan="6"
-                    style={{
-                      textAlign: "center",
-                      padding: "2rem",
-                      color: "#999",
-                    }}
+                    colSpan="5"
+                    style={{ textAlign: "center", padding: "2rem" }}
                   >
                     No access records found.
                   </td>
@@ -209,7 +211,7 @@ export default function ConsentManagement() {
             style={{ display: "flex", flexDirection: "column", gap: "15px" }}
           >
             <Input
-              label="Staff ID (e.g. D-7890)"
+              label="Staff ID"
               type="text"
               required
               value={newAccess.staff_id}
@@ -217,21 +219,39 @@ export default function ConsentManagement() {
                 setNewAccess({ ...newAccess, staff_id: e.target.value })
               }
             />
-            <Input
-              label="Purpose of Access"
-              type="text"
-              placeholder="e.g. Consultation"
-              required
-              value={newAccess.purpose}
-              onChange={(e) =>
-                setNewAccess({ ...newAccess, purpose: e.target.value })
-              }
-            />
-            <Button
-              type="submit"
-              disabled={isProcessing}
-              style={{ marginTop: "10px" }}
+
+            <div
+              style={{ display: "flex", flexDirection: "column", gap: "5px" }}
             >
+              <label style={{ fontSize: "0.9rem", fontWeight: "bold" }}>
+                Purpose of Access
+              </label>
+              <select
+                required
+                value={newAccess.purpose}
+                onChange={(e) =>
+                  setNewAccess({ ...newAccess, purpose: e.target.value })
+                }
+                style={{
+                  padding: "10px",
+                  borderRadius: "6px",
+                  border: "1px solid #ccc",
+                }}
+              >
+                <option value="" disabled>
+                  Select Purpose...
+                </option>
+                <option value="TREATMENT">TREATMENT</option>
+                <option value="RESEARCH">RESEARCH</option>
+                <option value="INSURANCE">INSURANCE</option>
+                <option value="BILLING">BILLING</option>
+                <option value="EMERGENCY">EMERGENCY</option>
+                <option value="REFERRAL">REFERRAL</option>
+                <option value="OTHER">OTHER</option>
+              </select>
+            </div>
+
+            <Button type="submit" disabled={isProcessing}>
               {isProcessing ? "Granting..." : "Grant Access"}
             </Button>
           </form>
