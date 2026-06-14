@@ -75,12 +75,12 @@ urlpatterns = [
     # Consents under a patient — frontend: GET/POST/DELETE /patients/<id>/consents
     # (Abdullah's views, mounted under patients/ prefix)
     path(
-        "api/v1/patients/<int:patient_id>/consents",
+        "api/v1/patients/<str:patient_id>/consents",
         ConsentListGrantView.as_view(),
         name="patient-consent-list-grant",
     ),
     path(
-        "api/v1/patients/<int:patient_id>/consents/<int:pk>",
+        "api/v1/patients/<str:patient_id>/consents/<int:pk>",
         ConsentRevokeView.as_view(),
         name="patient-consent-revoke",
     ),
