@@ -21,11 +21,14 @@ export default function ConsentManagement() {
   const [isProcessing, setIsProcessing] = useState(false);
 
   const fetchConsents = async () => {
-    if (!patientId) return;
+    const currentPatientId = patientId || "me";
     setIsLoading(true);
     try {
-      const response = await consentApi.getConsents(patientId);
-      setConsents(response.data);
+      const response = await consentApi.getConsents(currentPatientId);
+      const data = response.data.results
+        ? response.data.results
+        : response.data;
+      setConsents(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Error fetching consents:", error);
     } finally {
@@ -41,8 +44,9 @@ export default function ConsentManagement() {
     e.preventDefault();
     setIsProcessing(true);
     try {
-      await consentApi.grantConsent(patientId, {
-        staff_id: parseInt(newAccess.staff_id), // Converting to number as expected by JSDoc @param
+      const currentPatientId = patientId || "me";
+      await consentApi.grantConsent(currentPatientId, {
+        staff_id: parseInt(newAccess.staff_id),
         purpose: newAccess.purpose,
       });
       setModalOpen(false);
@@ -50,6 +54,9 @@ export default function ConsentManagement() {
       await fetchConsents();
     } catch (error) {
       console.error("Error granting consent:", error);
+      alert(
+        "Failed to grant consent. It might already exist or data is invalid.",
+      );
     } finally {
       setIsProcessing(false);
     }
@@ -62,7 +69,8 @@ export default function ConsentManagement() {
       )
     ) {
       try {
-        await consentApi.revokeConsent(patientId, consentId);
+        const currentPatientId = patientId || "me";
+        await consentApi.revokeConsent(currentPatientId, consentId);
         await fetchConsents();
       } catch (error) {
         console.error("Error revoking consent:", error);
@@ -130,7 +138,7 @@ export default function ConsentManagement() {
               {consents.length > 0 ? (
                 consents.map((consent) => (
                   <tr
-                    key={consent.Consent_Id}
+                    key={consent.Consent_Id || consent.id}
                     style={{ borderBottom: "1px solid #eee" }}
                   >
                     <td
@@ -140,28 +148,35 @@ export default function ConsentManagement() {
                         color: "#333",
                       }}
                     >
-                      {consent.Staff_Name || `Staff ID: ${consent.Staff_Id}`}
+                      {consent.Staff_Name ||
+                        `Staff ID: ${consent.staff || consent.Staff_Id}`}
                     </td>
                     <td style={{ padding: "12px", color: "#666" }}>
-                      {consent.Purpose}
+                      {consent.purpose || consent.Purpose}
                     </td>
                     <td style={{ padding: "12px", color: "#666" }}>
                       {consent.granted_at}
                     </td>
                     <td style={{ padding: "12px" }}>
                       <StatusBadge
-                        status={consent.Is_Active ? "ACTIVE" : "REVOKED"}
+                        status={
+                          consent.is_active || consent.Is_Active
+                            ? "ACTIVE"
+                            : "REVOKED"
+                        }
                       />
                     </td>
                     <td style={{ padding: "12px", color: "#999" }}>
                       {consent.revoked_at || "-"}
                     </td>
                     <td style={{ padding: "12px", textAlign: "right" }}>
-                      {consent.Is_Active ? (
+                      {consent.is_active || consent.Is_Active ? (
                         <Button
                           size="small"
                           variant="danger"
-                          onClick={() => handleRevokeAccess(consent.Consent_Id)}
+                          onClick={() =>
+                            handleRevokeAccess(consent.id || consent.Consent_Id)
+                          }
                         >
                           Revoke
                         </Button>
@@ -209,24 +224,56 @@ export default function ConsentManagement() {
             style={{ display: "flex", flexDirection: "column", gap: "15px" }}
           >
             <Input
-              label="Staff ID (e.g. D-7890)"
-              type="text"
+              label="Staff ID (e.g. 1)"
+              type="number"
               required
               value={newAccess.staff_id}
               onChange={(e) =>
                 setNewAccess({ ...newAccess, staff_id: e.target.value })
               }
             />
-            <Input
-              label="Purpose of Access"
-              type="text"
-              placeholder="e.g. Consultation"
-              required
-              value={newAccess.purpose}
-              onChange={(e) =>
-                setNewAccess({ ...newAccess, purpose: e.target.value })
-              }
-            />
+
+            <div
+              style={{ display: "flex", flexDirection: "column", gap: "5px" }}
+            >
+              <label
+                style={{
+                  fontSize: "0.9rem",
+                  fontWeight: "bold",
+                  color: "#333",
+                }}
+              >
+                Purpose of Access
+              </label>
+              <select
+                required
+                value={newAccess.purpose}
+                onChange={(e) =>
+                  setNewAccess({ ...newAccess, purpose: e.target.value })
+                }
+                style={{
+                  padding: "10px",
+                  borderRadius: "6px",
+                  border: "1px solid #ccc",
+                  fontSize: "1rem",
+                  backgroundColor: "#fff",
+                  cursor: "pointer",
+                }}
+              >
+                <option value="" disabled>
+                  Select Purpose...
+                </option>
+
+                <option value="TREATMENT">TREATMENT</option>
+                <option value="RESEARCH">RESEARCH</option>
+                <option value="INSURANCE">INSURANCE</option>
+                <option value="BILLING">BILLING</option>
+                <option value="EMERGENCY">EMERGENCY</option>
+                <option value="REFERRAL">REFERRAL</option>
+                <option value="OTHER">OTHER</option>
+              </select>
+            </div>
+
             <Button
               type="submit"
               disabled={isProcessing}

@@ -14,7 +14,7 @@
  * Utility (admin/staff):
  *   GET    /consents/check?patient_id=&staff_id=&purpose=  → checkConsent
  */
-import apiClient from '../apiClient';
+import apiClient from "../apiClient";
 
 const consentApi = {
   /**
@@ -32,9 +32,15 @@ const consentApi = {
    * @param {{ staff_id: number, purpose: string, description?: string, expires_at?: string }} payload
    * @returns {Promise<{ data: Consent }>}
    */
-  grantConsent: (patientId, payload) =>
-    apiClient.post(`/patients/${patientId}/consents`, payload),
+  grantConsent: (patientId, payload) => {
+    const backendPayload = {
+      ...payload,
+      staff: payload.staff_id,
+    };
+    delete backendPayload.staff_id;
 
+    return apiClient.post(`/patients/${patientId}/consents`, backendPayload);
+  },
   /**
    * Revoke an active consent (soft-delete — sets is_active=false).
    * Backend returns 200 (not 204) with { message, revoked_at }.
@@ -50,8 +56,7 @@ const consentApi = {
    * @param {{ patient_id: number, staff_id: number, purpose: string }} params
    * @returns {Promise<{ data: { has_consent: boolean, consent_id: number|null } }>}
    */
-  checkConsent: (params) =>
-    apiClient.get('/consents/check', { params }),
+  checkConsent: (params) => apiClient.get("/consents/check", { params }),
 };
 
 export default consentApi;
