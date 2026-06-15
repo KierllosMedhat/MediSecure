@@ -116,6 +116,7 @@ const {user} = useAuth();
   const [documents, setDocuments] = useState([]);
   const [docError, setDocError] = useState(null);
   const [emptyMessage, setEmptyMessage] = useState("Something went wrong");
+  const [isLoading,setIsLoading] = useState(true);
 
   // drag and drop states
   const [file, setFile] = useState(null);
@@ -138,7 +139,7 @@ const {user} = useAuth();
 
 
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file_path", file);
 
       // date adjustment
       const now = new Date();
@@ -147,7 +148,7 @@ const month = String(now.getMonth() + 1).padStart(2, "0");
 const day = String(now.getDate()).padStart(2, "0");
 
       const newDocument = {
-        document_id: nextDocID,
+        // document_id: nextDocID,
         record_id: recordId,
         file_name: file.name,
         file_path: `documents/${year}/${month}/${day}/${file.name}`,
@@ -177,7 +178,11 @@ const day = String(now.getDate()).padStart(2, "0");
 
   const fetchRecord = async (id) => {
     const response = await recordsApi.getRecordById(patientId, id);
+    console.log(response.data);
     setRecord(response.data);
+    if(response.data){
+      setRecError(null);
+    }
   }
   useEffect(() => {
 
@@ -220,7 +225,13 @@ if((patientId == undefined)||(patientId == null)){
 
   const fetchDocuments = async () => {
     const documents = await recordsApi.getDocumentsByRecord(recordId);
-    setDocuments(documents.data.results)
+    console.log("fetching documents");
+    
+    setDocuments(documents.data.results);
+    console.log(documents.data.results);
+    if(documents.data.results){
+      setDocError(null);
+    }
   }
 
   useEffect(() => {
@@ -241,7 +252,7 @@ if((patientId == undefined)||(patientId == null)){
       }
     }
     if(record) run();
-  }, [record])
+  }, [recordId])
 
 
 

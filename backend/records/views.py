@@ -72,9 +72,9 @@ class MedicalRecordListCreateView(generics.ListCreateAPIView):
                 raise PermissionDenied("You do not have permission to view this record")
         elif UserRole == "DOCTOR" or UserRole == "NURSE" or UserRole == "BILLING_STAFF":
             try:
-              curr_staff = self.request.user.staff_profile
+                curr_staff = self.request.user.staff_profile
             except ObjectDoesNotExist:
-              raise PermissionDenied("Only staff members can view records.")
+                raise PermissionDenied("Only staff members can view records.")
 
 
             consent = Consent.objects.filter(patient=patient_id, staff=curr_staff,is_active=True).first()
@@ -88,13 +88,13 @@ class MedicalRecordListCreateView(generics.ListCreateAPIView):
         specificRecordType = self.request.query_params.get("record_type")
         specificFromDate = self.request.query_params.get("from_date")
         if specificRecordType and specificFromDate:
-             patientRecords = MedicalRecord.objects.filter(created_at__gte=specificFromDate,record_type=specificRecordType,patient=patient_id).all()
+            patientRecords = MedicalRecord.objects.select_related("created_by").filter(created_at__gte=specificFromDate,record_type=specificRecordType,patient=patient_id).all()
         elif specificRecordType:
-            patientRecords = MedicalRecord.objects.filter(record_type=specificRecordType,patient=patient_id).all()
+            patientRecords = MedicalRecord.objects.select_related("created_by").filter(record_type=specificRecordType,patient=patient_id).all()
         elif specificFromDate:
-            patientRecords = MedicalRecord.objects.filter(created_at__gte=specificFromDate,patient=patient_id).all()
+            patientRecords = MedicalRecord.objects.select_related("created_by").filter(created_at__gte=specificFromDate,patient=patient_id).all()
         else:
-            patientRecords = MedicalRecord.objects.filter(patient=patient_id).all()
+            patientRecords = MedicalRecord.objects.select_related("created_by").filter(patient=patient_id).all()
 
         patientRecords = patientRecords.order_by("-created_at")
         
@@ -120,15 +120,15 @@ class MedicalRecordDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-       patient_id = self.kwargs.get("patient_id")
-       user_role = self.request.user.role
+        patient_id = self.kwargs.get("patient_id")
+        user_role = self.request.user.role
 
-       if user_role == "PATIENT":
+        if user_role == "PATIENT":
             return MedicalRecord.objects.filter(
                 patient=self.request.user.patient_profile
             )
 
-       if user_role in ("DOCTOR", "NURSE", "BILLING_STAFF"):
+        if user_role in ("DOCTOR", "NURSE", "BILLING_STAFF"):
             try:
                 curr_staff = self.request.user.staff_profile
             except ObjectDoesNotExist:
@@ -144,7 +144,7 @@ class MedicalRecordDetailView(generics.RetrieveUpdateDestroyAPIView):
                 if not has_consent:
                     raise PermissionDenied("You do not have consent to view this record.")
 
-                return MedicalRecord.objects.filter(patient_id=patient_id)
+                return MedicalRecord.objects.select_related("created_by").filter(patient_id=patient_id)
 
             else:
                 consented_patients = Consent.objects.filter(
@@ -152,7 +152,7 @@ class MedicalRecordDetailView(generics.RetrieveUpdateDestroyAPIView):
                     is_active=True,
                 ).values_list("patient_id", flat=True)
 
-                return MedicalRecord.objects.filter(
+                return MedicalRecord.objects.select_related("created_by").filter(
                     patient_id__in=consented_patients
                 )
 
@@ -184,7 +184,7 @@ class DocumentListView(generics.ListAPIView):
                 raise PermissionDenied("You do not have permission to view these documents.")
             return Document.objects.select_related('uploaded_by').filter(record=record_id).all()
 
-        if user_role in ("DOCTOR", "NURSE", "BILLING_STAFF"):
+        if user_role in ("DOCTOR", "NURSE", "BILLING_STAFF","ADMIN"):
             try:
                 curr_staff = self.request.user.staff_profile
             except ObjectDoesNotExist:
@@ -248,7 +248,7 @@ class DocumentUploadView(generics.CreateAPIView):
             serializer.save(record=target_record)
             return
 
-        if user_role in ("DOCTOR", "NURSE", "BILLING_STAFF"):
+        if user_role in ("DOCTOR", "NURSE", "BILLING_STAFF","ADMIN"):
             try:
                 curr_staff = self.request.user.staff_profile
             except ObjectDoesNotExist:

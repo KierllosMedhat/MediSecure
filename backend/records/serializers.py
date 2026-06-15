@@ -30,7 +30,7 @@ class DocumentSerializer(serializers.ModelSerializer):
             "file_name", "file_path", "file_type", "file_size",
             "created_at",
         ]
-        read_only_fields = ["id", "uploaded_by", "file_size", "created_at"]
+        read_only_fields = ["id", "record", "uploaded_by", "file_name", "file_size", "created_at"]
 
     def get_uploaded_by_name(self, obj):
         # TODO (Fadi): Return uploader's full name
@@ -52,7 +52,7 @@ class DocumentSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 f"Unsupported file type '{ext}'. Allowed: {allowed_extensions}"
             )
-            return value
+        return value
 
     def create(self, validated_data):
         # TODO (Fadi): Auto-set uploaded_by from request.user
@@ -135,11 +135,11 @@ class MedicalRecordDetailSerializer(serializers.ModelSerializer):
 
     def get_created_by_name(self, obj):
         # TODO (Fadi): Return creator's full name
-       user = obj.created_by
-       if user is None:
-          return None
-          parts = [user.first_name, user.middle_name, user.last_name]
-          return " ".join(p for p in parts if p).strip() or user.email
+        user = obj.created_by
+        if user is None:
+            return None
+        parts = [user.first_name, user.middle_name, user.last_name]
+        return " ".join(p for p in parts if p).strip() or user.email
 
     def create(self, validated_data):
         # TODO (Fadi): Auto-set created_by from request.user
