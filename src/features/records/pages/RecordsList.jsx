@@ -187,8 +187,8 @@ useEffect(() => {
   retrieveRecords(filters);
  }
  const handleRowClick = (record) => {
-  navigate(`/patients/me/records/${record.id}`,{
-    state: {id:patientId}
+  navigate(`/patients/me/records/currentRecord`,{
+    state: {id:patientId,recordId:record.id}
   });
  }
 

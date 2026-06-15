@@ -26,9 +26,9 @@ import DocumentSection from '../components/DocumentSection';
 import {useAuth} from '../../auth/hooks/useAuth';
 import patientApi from '../../../api/services/patientService';
 export default function RecordDetail() {
-  const { recordId } = useParams();
+  
   const location = useLocation();
-var {patientId} = location.state;
+var {patientId,recordId} = location.state;
 const {user} = useAuth();
   const navigate = useNavigate();
 
@@ -215,7 +215,7 @@ if((patientId == undefined)||(patientId == null)){
 }
     const run = async () => {
       try {
-        await fetchRecord();
+        await fetchRecord(recordId);
       } catch (error) {
         setRecError(error);
       }
@@ -223,13 +223,14 @@ if((patientId == undefined)||(patientId == null)){
     run();
   }, []);
 
-  const fetchDocuments = async () => {
-    const documents = await recordsApi.getDocumentsByRecord(recordId);
+  const fetchDocuments = async (recordID) => {
+    const documents = await recordsApi.getDocumentsByRecord(recordID);
     console.log("fetching documents");
     
     setDocuments(documents.data.results);
     console.log(documents.data.results);
     if(documents.data.results){
+      console.log(`number of documents ${documents.data.results.length}`);
       setDocError(null);
     }
   }
@@ -246,13 +247,14 @@ if((patientId == undefined)||(patientId == null)){
 
     const run = async () => {
       try {
-        await fetchDocuments();
+        await fetchDocuments(recordId);
       } catch (error) {
+        console.log(`Error of documents ${error}`);
         setDocError(error);
       }
     }
-    if(record) run();
-  }, [recordId])
+    if(record && recordId) run();
+  }, [recordId,record])
 
 
 

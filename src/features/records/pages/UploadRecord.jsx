@@ -19,17 +19,21 @@ import { Card, Button, Input } from '../../../components/ui';
 
 import './RecordPages.css';
 import { useState,useRef,useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate,useLocation } from 'react-router-dom';
 import { useFormik,Formik, Form, Field, ErrorMessage } from 'formik';
 import DragAndDropFileUpload from '../components/DragAndDropFileUpload';
 import DocumentSection from '../components/DocumentSection';
 import * as Yup from 'yup';
 import { mergeConfig } from 'axios';
+import recordsApi from '../../../api/services/recordsService';
+import patientApi from '../../../api/services/patientService';
 export default function UploadRecord() {
   //const { id: patientId} = useParams();
   //const patientId = 1;
+  const location = useLocation();
+  var {patientId} = location.state;
   // user data retreival
-const [patientId,setPatientId] = useState(null);
+//const [patientId,setPatientId] = useState(null);
 
 function getUserIdFromStorage() {
   try {
@@ -44,18 +48,7 @@ function getUserIdFromStorage() {
     return null;
   }
 }
-useEffect(()=>{
-const currentUserID = getUserIdFromStorage();
 
-if(currentUserID){
-  setPatientId(currentUserID);
-  return;
-}
-else{
-  setPatientId(1); // dummyid
-}
-return
-},[])
 
 
   const navigate = useNavigate();
@@ -129,15 +122,16 @@ if(!values.files.length){
       title: values.title,
       description: values.description,
     });
-    setReturnedRecordId(data.recordId);
+    const newRecordId = data.id;
+    setReturnedRecordId(newRecordId);
 
-    if(returnedRecordId){
+    if(newRecordId){
      try{
-for (const rawfile of rawfiles){
-  await recordsApi.uploadDocument(returnedRecordId,rawfile);
-}
-await new Promise((resolve) => setTimeout(resolve, 800)); // demo delay
-alert(`Upload success: ${files.length} files have been uploaded to record ${returnedRecordId }`);
+ for (const rawfile of rawfiles){
+   await recordsApi.uploadDocument(newRecordId, rawfile);
+ }
+ await new Promise((resolve) => setTimeout(resolve, 800)); // demo delay
+ alert(`Upload success: ${files.length} files have been uploaded to record ${newRecordId}`);
 
      }catch (error) {
       console.error(error);
@@ -194,7 +188,7 @@ const handleUpload = async () => {
   }
  
     const formData = new FormData();
-    formData.append("file", file);
+    formData.append("file_path", file);
 
     SetRawFiles([...rawfiles,formData]);
 
@@ -205,8 +199,8 @@ const month = String(now.getMonth() + 1).padStart(2, "0");
 const day = String(now.getDate()).padStart(2, "0");
 
     const newDocument = {
-      document_id: nextDocID,
-      record_id: 102,
+      //document_id: nextDocID,
+      record_id: returnedRecordId,
       file_name: file.name,
       file_path: `documents/${year}/${month}/${day}/${file.name}`,
       file_type: file.type,

@@ -19,7 +19,7 @@ export default function DocumentSection({documents,docError,downloadable,handleD
         ) : (
           <ul className="documents-list" ref={docListRef}>
             {documents.map((doc) => (
-              <li key={doc.document_id} className="document-item">
+              <li key={doc.id} className="document-item">
                 <div className="document-info">
                   <div><strong>{doc.file_name || 'Unnamed file'}</strong></div>
                   <div>Type: {doc.file_type || 'document'}</div>
@@ -27,7 +27,7 @@ export default function DocumentSection({documents,docError,downloadable,handleD
   
                 </div>
   { downloadable ?
-                <Button onClick={() => props.handleDownload(doc.document_id, doc.file_name)}>
+                <Button onClick={() => handleDownload(doc.id, doc.file_name)}>
                   Download
                 </Button>
                 :
