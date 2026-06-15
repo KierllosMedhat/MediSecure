@@ -67,31 +67,19 @@ export default function ConsentManagement() {
     };
 
     try {
-<<<<<<< HEAD
-      await consentApi.grantConsent(patientId, payload);
-=======
       await consentApi.grantConsent(patientId, {
         staff: parseInt(newAccess.staff), // Converting to number as expected by JSDoc @param
         purpose: newAccess.purpose,
       });
       console.log("granting consent with payload:", payload);  // ← check this
         
->>>>>>> 7faa6cf (resolving documents issue)
       setModalOpen(false);
       setNewAccess({ staff: "", purpose: "" });
       console.log
       await fetchConsents(patientId);
     } catch (error) {
-<<<<<<< HEAD
-      console.error("API Error:", error.response?.data);
-      alert(
-        "Error: " +
-          JSON.stringify(error.response?.data || "Failed to grant access"),
-      );
-=======
       console.log("error response data:", error.response?.data);
       //console.error("Error granting consent:", error);
->>>>>>> 7faa6cf (resolving documents issue)
     } finally {
       setIsProcessing(false);
     }
@@ -252,14 +240,6 @@ export default function ConsentManagement() {
               required
               value={newAccess.staff}
               onChange={(e) =>
-<<<<<<< HEAD
-                setNewAccess({ ...newAccess, staff_id: e.target.value })
-              }
-            />
-
-            <div
-              style={{ display: "flex", flexDirection: "column", gap: "5px" }}
-=======
                 setNewAccess({ ...newAccess, staff: e.target.value })
               }
             />
@@ -282,37 +262,7 @@ export default function ConsentManagement() {
               type="submit"
               disabled={isProcessing}
               style={{ marginTop: "10px" }}
->>>>>>> 7faa6cf (resolving documents issue)
             >
-              <label style={{ fontSize: "0.9rem", fontWeight: "bold" }}>
-                Purpose of Access
-              </label>
-              <select
-                required
-                value={newAccess.purpose}
-                onChange={(e) =>
-                  setNewAccess({ ...newAccess, purpose: e.target.value })
-                }
-                style={{
-                  padding: "10px",
-                  borderRadius: "6px",
-                  border: "1px solid #ccc",
-                }}
-              >
-                <option value="" disabled>
-                  Select Purpose...
-                </option>
-                <option value="TREATMENT">TREATMENT</option>
-                <option value="RESEARCH">RESEARCH</option>
-                <option value="INSURANCE">INSURANCE</option>
-                <option value="BILLING">BILLING</option>
-                <option value="EMERGENCY">EMERGENCY</option>
-                <option value="REFERRAL">REFERRAL</option>
-                <option value="OTHER">OTHER</option>
-              </select>
-            </div>
-
-            <Button type="submit" disabled={isProcessing}>
               {isProcessing ? "Granting..." : "Grant Access"}
             </Button>
           </form>
