@@ -69,7 +69,7 @@ const DUMMY_RECORDS_FOR_PATIENT_2 = [
 const [records,setRecords] = useState(null);
 
 const [recordType,setRecordType] = useState('all');
-const [fromDate,setFromDate] = useState('2026-01-01');
+const [fromDate,setFromDate] = useState('');
 
 const [emptyMessage,setEmptyMessage] = useState('No records found.');
 
@@ -184,11 +184,18 @@ useEffect(() => {
 // }, [patientId]);
 
  const handleFilter = (filters) => {
-  retrieveRecords(filters);
+  const params = {};
+  if (filters.recordType && filters.recordType !== 'all') {
+    params.record_type = filters.recordType;
+  }
+  if (filters.fromDate) {
+    params.from_date = filters.fromDate;
+  }
+  retrieveRecords(patientId, params);
  }
  const handleRowClick = (record) => {
   navigate(`/patients/me/records/currentRecord`,{
-    state: {id:patientId,recordId:record.id}
+    state: {patientId:patientId,recordId:record.id}
   });
  }
 
@@ -199,7 +206,7 @@ useEffect(() => {
   { key: 'record_type', label: 'Record Type',
     render:(value) => (<StatusBadge status={value}/>)
    },
-  { key: 'created_by', label: 'Created By' },
+  { key: 'created_by_name', label: 'Created By' },
   { key: 'created_at', label: 'Created At',
     render: (value) => (value ? new Date(value).toLocaleString() : 'N/A'),
   },
@@ -222,10 +229,13 @@ useEffect(() => {
       onChange={(e) => setRecordType(e.target.value)}
       >
       <option value="all">All</option>
-      <option value="diagnosis">Diagnosis</option>
-      <option value="lab_result">Lab Result</option>
-      <option value="prescription">Prescription</option>
-      <option value="imaging">Imaging</option>
+      <option value="DIAGNOSIS">Diagnosis</option>
+      <option value="LAB_RESULT">Lab Result</option>
+      <option value="PRESCRIPTION">Prescription</option>
+      <option value="IMAGING">Imaging</option>
+      <option value="DISCHARGE_SUMMARY">Discharge Summary</option>
+      <option value="VISIT_SUMMARY">Visit Summary</option>
+      <option value="OTHER">Other</option>
     </select>
 </div>
     

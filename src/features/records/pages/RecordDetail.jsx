@@ -197,12 +197,12 @@ const day = String(now.getDate()).padStart(2, "0");
 
     const initialize = async () => {
       try {
-          const userProfile = await patientApi.getProfile();
-          console.log("userProfile:", userProfile);
-          const id = userProfile.data.id;
-          console.log("id:", id);
-          //setPatientId(id);
-          patientId=id;
+          // const userProfile = await patientApi.getProfile();
+          // console.log("userProfile:", userProfile);
+          // const id = userProfile.data.id;
+          // console.log("id:", id);
+          // //setPatientId(id);
+          // patientId=id;
           await fetchRecord(recordId);  // pass id directly, don't rely on state
       } catch (error) {
           console.error("Could not fetch patient:", error);
@@ -311,7 +311,7 @@ if((patientId == undefined)||(patientId == null)){
     {
       key: 'description', label: 'Description'
     },
-    { key: 'created_by', label: 'Created By' },
+    { key: 'created_by_name', label: 'Created By' },
     {
       key: 'created_at', label: 'Created At',
       render: (value) => (value ? new Date(value).toLocaleString() : 'N/A'),

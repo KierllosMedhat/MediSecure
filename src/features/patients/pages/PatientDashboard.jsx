@@ -226,7 +226,7 @@ export default function PatientDashboard() {
                 className="btn-outline btn-sm"
                 onClick={() => navigate(`/patients/me/records/upload`,{
 
-                  state:{id:patientId}
+                  state:{patientId}
                  } )}
                 id="dashboard-upload-btn"
               >

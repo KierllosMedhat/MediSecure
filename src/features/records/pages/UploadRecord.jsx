@@ -55,10 +55,13 @@ function getUserIdFromStorage() {
 const [returnedRecordId,setReturnedRecordId] = useState(null);
   const RECORD_TYPES = [
     { value: '', label: 'Select type…' },
-    { value: 'lab', label: 'Lab results' },
-    { value: 'imaging', label: 'Imaging' },
-    { value: 'prescription', label: 'Prescription' },
-    { value: 'visit', label: 'Visit summary' },
+    { value: 'LAB_RESULT', label: 'Lab Results' },
+    {value:'DIAGNOSIS',label:'Diagnosis'},
+    {value:'DISCHARGE_SUMMARY',label:'Discharge Summary'},
+    { value: 'IMAGING', label: 'Imaging' },
+    { value: 'PRESCRIPTION', label: 'Prescription' },
+    { value: 'VISIT_SUMMARY', label: 'Visit Summary' },
+    {value:'OTHER',label:'Other'},
   ];
 
 
@@ -105,6 +108,7 @@ if(!values.files.length){
       //dummySubmit(values);
       formSubmit(values);
       setSubmitting(false);
+      setTimeout(() => navigate('/dashboard'), 1200);
     },
     validationSchema:recordValidationSchema,
   });
@@ -117,7 +121,7 @@ if(!values.files.length){
 
   const formSubmit = async (values) => {
     const { data } = await recordsApi.createRecord({
-      patient_id: patientId, 
+      patient: patientId, 
       record_type: values.record_type,
       title: values.title,
       description: values.description,
@@ -131,7 +135,7 @@ if(!values.files.length){
    await recordsApi.uploadDocument(newRecordId, rawfile);
  }
  await new Promise((resolve) => setTimeout(resolve, 800)); // demo delay
- alert(`Upload success: ${files.length} files have been uploaded to record ${newRecordId}`);
+ alert(`Upload success: ${rawfiles.length} files have been uploaded to record ${newRecordId}`);
 
      }catch (error) {
       console.error(error);
@@ -140,6 +144,7 @@ if(!values.files.length){
     } finally {
       
       formik.setFieldValue('files', []);
+      formik.resetForm();
       
     }
 
@@ -205,7 +210,7 @@ const day = String(now.getDate()).padStart(2, "0");
       file_path: `documents/${year}/${month}/${day}/${file.name}`,
       file_type: file.type,
       file_size: file.size,
-      uploaded_by: patientId,
+      uploaded_By: patientId,
       created_at: `${new Date().toLocaleString()}`
 
     }
@@ -213,6 +218,9 @@ const day = String(now.getDate()).padStart(2, "0");
     //add to documents
     setDocuments([...documents, newDocument]);
     setNextDocID(nextDocID + 1);
+
+    //add to rawfiles
+    SetRawFiles([...rawfiles,formData]);
 
     // add to formik
     formik.setFieldValue('files',[...formik.values.files,file]);
