@@ -6,123 +6,153 @@
  * Gateway_Type, Status, Paid_at, Receipt_URL
  *
  * TODO:
- * - Fetch receipt from paymentApi.getReceipt(paymentId)
- * - Display: Payment_Id, Amount + Currency, Payment_Type, Gateway_Type,
+ * - [x] Fetch receipt from paymentApi.getReceipt(paymentId)
+ * - [x] Display: Payment_Id, Amount + Currency, Payment_Type, Gateway_Type,
  * Status, Paid_at, Receipt_URL
- * - Print button (window.print())
- * - Back link to /payments
+ * - [x] Print button (window.print())
+ * - [x] Back link to /payments
  */
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { Card, Button } from '../../../components/ui';
-import './PaymentPages.css';
-
-// fake API response for testing
-const mockPaymentApi = {
-  getReceipt: async (id) => ({
-    Payment_Id: id || 'PAY-101',
-    Amount: 150.00,
-    Currency: 'EGP',
-    Payment_Type: 'CONSULTATION',
-    Gateway_Type: 'INTERNATIONAL (Visa/Mastercard)',
-    Status: 'COMPLETED',
-    Paid_at: '2026-04-10 14:30',
-    Receipt_URL: `https://medisecure.com/receipts/${id || 'PAY-101'}.pdf`
-  })
-};
+import React, { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { Card, Button } from "../../../components/ui";
+import paymentApi from "../../../api/services/paymentService";
+import "./PaymentPages.css";
 
 export default function PaymentReceipt() {
   const { paymentId } = useParams();
-  const navigate = useNavigate(); 
+  const navigate = useNavigate();
   const [receipt, setReceipt] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  
+  const [error, setError] = useState(null);
+
   useEffect(() => {
     const fetchReceipt = async () => {
+      if (!paymentId) return;
+
       setIsLoading(true);
+      setError(null);
+
       try {
-        // TODO: Replace with actual paymentApi.getReceipt(paymentId)
-        const data = await mockPaymentApi.getReceipt(paymentId);
-        setReceipt(data);
-      } catch (error) {
-        console.error("Failed to load receipt", error);
+        const response = await paymentApi.getReceipt(paymentId);
+        setReceipt(response.data);
+      } catch (err) {
+        console.error("Failed to load receipt", err);
+        setError("Could not retrieve receipt details. Please try again later.");
       } finally {
         setIsLoading(false);
       }
     };
+
     fetchReceipt();
   }, [paymentId]);
 
   if (isLoading) {
-    return <div className="payments-page payments-container"><p>Loading receipt details...</p></div>;
+    return (
+      <div className="payments-page payments-container">
+        <p>Loading receipt details...</p>
+      </div>
+    );
   }
 
-  if (!receipt) {
-    return <div className="payments-page payments-container"><p>Receipt not found.</p></div>;
+  if (error || !receipt) {
+    return (
+      <div className="payments-page payments-container">
+        <p style={{ color: "red" }}>{error || "Receipt not found."}</p>
+        <div style={{ marginTop: "1rem" }}>
+          <Button variant="secondary" onClick={() => navigate("/payments")}>
+            &larr; Back to Payments
+          </Button>
+        </div>
+      </div>
+    );
   }
+
+  const id =
+    receipt.Payment_Id || receipt.payment_id || receipt.id || paymentId;
+  const amount = receipt.Amount || receipt.amount || 0;
+  const currency = receipt.Currency || receipt.currency || "EGP";
+  const type = receipt.Payment_Type || receipt.payment_type || "N/A";
+  const gateway = receipt.Gateway_Type || receipt.gateway_type || "N/A";
+  const status = receipt.Status || receipt.status || "UNKNOWN";
+  const paidAt = receipt.Paid_at || receipt.paid_at || "-";
+  const receiptUrl = receipt.Receipt_URL || receipt.receipt_url || "#";
 
   return (
     <div className="payments-page payments-container">
-      
-      {/* TODO: Back link */}
-      <div style={{ marginBottom: '1.5rem' }}>
-        <Button variant="secondary" onClick={() => navigate('/payments')}>
+      <div style={{ marginBottom: "1.5rem" }}>
+        <Button variant="secondary" onClick={() => navigate("/payments")}>
           &larr; Back to Payments
         </Button>
       </div>
 
-      {/* TODO: Receipt card with ERD Payment fields + print button */}
       <Card className="receipt-card">
         <div className="receipt-header">
-          <h2 style={{ color: '#28a745', margin: '0 0 10px 0' }}>Payment Successful</h2>
-          <p style={{ color: '#6c757d', margin: 0 }}>Thank you for your payment!</p>
+          <h2 style={{ color: "#28a745", margin: "0 0 10px 0" }}>
+            Payment Successful
+          </h2>
+          <p style={{ color: "#6c757d", margin: 0 }}>
+            Thank you for your payment!
+          </p>
         </div>
 
         <div className="receipt-details">
           <div className="receipt-row">
             <span>Payment ID:</span>
-            <strong>{receipt.Payment_Id}</strong>
+            <strong>{id}</strong>
           </div>
           <div className="receipt-row">
             <span>Date Paid:</span>
-            <strong>{receipt.Paid_at}</strong>
+            <strong>{paidAt}</strong>
           </div>
           <div className="receipt-row">
             <span>Payment Type:</span>
-            <strong>{receipt.Payment_Type}</strong>
+            <strong>{type}</strong>
           </div>
           <div className="receipt-row">
             <span>Gateway:</span>
-            <strong>{receipt.Gateway_Type}</strong>
+            <strong>{gateway}</strong>
           </div>
           <div className="receipt-row">
             <span>Status:</span>
-            <strong style={{ color: '#28a745' }}>{receipt.Status}</strong>
+            <strong style={{ color: "#28a745", textTransform: "uppercase" }}>
+              {status}
+            </strong>
           </div>
-          
+
           <div className="receipt-row total">
             <span>Amount Paid:</span>
-            <span style={{ color: '#0056b3' }}>
-              {receipt.Amount.toFixed(2)} {receipt.Currency}
+            <span style={{ color: "#0056b3" }}>
+              {Number(amount).toFixed(2)} {currency}
             </span>
           </div>
         </div>
 
-        {/* TODO: Print button (window.print()) */}
-        <div style={{ marginTop: '2rem', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <Button variant="primary" onClick={() => window.print()} style={{ width: '100%' }}>
+        <div
+          style={{
+            marginTop: "2rem",
+            display: "flex",
+            flexDirection: "column",
+            gap: "10px",
+          }}
+        >
+          <Button
+            variant="primary"
+            onClick={() => window.print()}
+            style={{ width: "100%" }}
+          >
             Print Receipt
           </Button>
-          <Button 
-            variant="secondary" 
-            onClick={() => window.open(receipt.Receipt_URL, '_blank')} 
-            style={{ width: '100%' }}
-          >
-            Download Digital Copy
-          </Button>
+          {receiptUrl !== "#" && (
+            <Button
+              variant="secondary"
+              onClick={() => window.open(receiptUrl, "_blank")}
+              style={{ width: "100%" }}
+            >
+              Download Digital Copy
+            </Button>
+          )}
         </div>
       </Card>
-      
     </div>
   );
 }
