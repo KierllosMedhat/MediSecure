@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import consentApi from "../../../api/services/consentService";
-import {useAuth} from '../../auth/hooks/useAuth';
-import patientApi from '../../../api/services/patientService';
 import {
   Card,
   Button,
@@ -13,22 +11,19 @@ import {
 import "./ConsentPages.css";
 
 export default function ConsentManagement() {
-
-  //const { id: patientId } = useParams();
-  const {user} = useAuth();
-  const [patientId,setPatientId] = useState(null);
+  const { id: patientId } = useParams();
 
   const [consents, setConsents] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setModalOpen] = useState(false);
-  const [newAccess, setNewAccess] = useState({ staff: "", purpose: "" });
+  const [newAccess, setNewAccess] = useState({ staff_id: "", purpose: "" });
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const fetchConsents = async (id) => {
-    if (!id) return;
+  const fetchConsents = async () => {
+    if (!patientId) return;
     setIsLoading(true);
     try {
-      const response = await consentApi.getConsents(id);
+      const response = await consentApi.getConsents(patientId);
       setConsents(response.data);
     } catch (error) {
       console.error("Error fetching consents:", error);
@@ -38,24 +33,8 @@ export default function ConsentManagement() {
   };
 
   useEffect(() => {
-    const initialize = async () => {
-      try {
-          const userProfile = await patientApi.getProfile();
-          console.log("userProfile:", userProfile);
-          const id = userProfile.data.id;
-          console.log("id:", id);
-          setPatientId(id);
-          await fetchConsents(id);  // pass id directly, don't rely on state
-      } catch (error) {
-          console.error("Could not fetch patient:", error);
-          setPatientId(1);
-          
-      }
-  };
-
-  initialize();
-    
-  }, []);
+    fetchConsents();
+  }, [patientId]);
 
   const handleGrantAccess = async (e) => {
     e.preventDefault();
@@ -67,19 +46,16 @@ export default function ConsentManagement() {
     };
 
     try {
-      await consentApi.grantConsent(patientId, {
-        staff: parseInt(newAccess.staff), // Converting to number as expected by JSDoc @param
-        purpose: newAccess.purpose,
-      });
-      console.log("granting consent with payload:", payload);  // ← check this
-        
+      await consentApi.grantConsent(patientId, payload);
       setModalOpen(false);
-      setNewAccess({ staff: "", purpose: "" });
-      console.log
-      await fetchConsents(patientId);
+      setNewAccess({ staff_id: "", purpose: "" });
+      await fetchConsents();
     } catch (error) {
-      console.log("error response data:", error.response?.data);
-      //console.error("Error granting consent:", error);
+      console.error("API Error:", error.response?.data);
+      alert(
+        "Error: " +
+          JSON.stringify(error.response?.data || "Failed to grant access"),
+      );
     } finally {
       setIsProcessing(false);
     }
@@ -93,7 +69,7 @@ export default function ConsentManagement() {
     ) {
       try {
         await consentApi.revokeConsent(patientId, consentId);
-        await fetchConsents(patientId);
+        await fetchConsents();
       } catch (error) {
         console.error("Error revoking consent:", error);
         alert("Failed to revoke consent.");
@@ -238,31 +214,44 @@ export default function ConsentManagement() {
               label="Staff ID"
               type="text"
               required
-              value={newAccess.staff}
+              value={newAccess.staff_id}
               onChange={(e) =>
-                setNewAccess({ ...newAccess, staff: e.target.value })
+                setNewAccess({ ...newAccess, staff_id: e.target.value })
               }
             />
-           <select
-           label="Purpose of Access"
-    value={newAccess.purpose}
-    onChange={(e) => setNewAccess({ ...newAccess, purpose: e.target.value })}
-    required
->
-    <option value="">Select purpose</option>
-    <option value="TREATMENT">Treatment</option>
-    <option value="RESEARCH">Research</option>
-    <option value="INSURANCE">Insurance</option>
-    <option value="BILLING">Billing</option>
-    <option value="EMERGENCY">Emergency</option>
-    <option value="REFERRAL">Referral</option>
-    <option value="OTHER">Other</option>
-</select>
-            <Button
-              type="submit"
-              disabled={isProcessing}
-              style={{ marginTop: "10px" }}
+
+            <div
+              style={{ display: "flex", flexDirection: "column", gap: "5px" }}
             >
+              <label style={{ fontSize: "0.9rem", fontWeight: "bold" }}>
+                Purpose of Access
+              </label>
+              <select
+                required
+                value={newAccess.purpose}
+                onChange={(e) =>
+                  setNewAccess({ ...newAccess, purpose: e.target.value })
+                }
+                style={{
+                  padding: "10px",
+                  borderRadius: "6px",
+                  border: "1px solid #ccc",
+                }}
+              >
+                <option value="" disabled>
+                  Select Purpose...
+                </option>
+                <option value="TREATMENT">TREATMENT</option>
+                <option value="RESEARCH">RESEARCH</option>
+                <option value="INSURANCE">INSURANCE</option>
+                <option value="BILLING">BILLING</option>
+                <option value="EMERGENCY">EMERGENCY</option>
+                <option value="REFERRAL">REFERRAL</option>
+                <option value="OTHER">OTHER</option>
+              </select>
+            </div>
+
+            <Button type="submit" disabled={isProcessing}>
               {isProcessing ? "Granting..." : "Grant Access"}
             </Button>
           </form>
