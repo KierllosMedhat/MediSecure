@@ -18,12 +18,15 @@
 import { useParams } from 'react-router-dom';
 import { DataTable, Button,StatusBadge } from '../../../components/ui';
 import recordsApi from '../../../api/services/recordsService';
+import patientApi from '../../../api/services/patientService';
 import './RecordPages.css';
 import { useNavigate } from 'react-router-dom';
-
+import {useAuth} from '../../auth/hooks/useAuth';
 import { useState,useEffect } from 'react';
 export default function RecordsList() {
-  //const { id: patientId } = useParams();
+  const { id: urlPatientId } = useParams();
+
+  const {user} = useAuth();
   const navigate = useNavigate();
 const [patientId,setPatientId] = useState(null);
   // dummy data for testing
@@ -67,16 +70,21 @@ const DUMMY_RECORDS_FOR_PATIENT_2 = [
 const [records,setRecords] = useState(null);
 
 const [recordType,setRecordType] = useState('all');
-const [fromDate,setFromDate] = useState('2026-01-01');
+const [fromDate,setFromDate] = useState('');
 
 const [emptyMessage,setEmptyMessage] = useState('No records found.');
 
 
-const retrieveRecords = async (filters={}) => {
+const retrieveRecords = async (id,filters={}) => {
   try{
-  const response = await recordsApi.getRecords(patientId, filters);
-  setRecords(response.data);
+  const response = await recordsApi.getRecords(id, filters);
+  setRecords([...response.data.results]);
+  console.log(records);
   } catch (error) {
+    if (!error.response) {
+      setEmptyMessage('Network error. Please check your connection.');
+      return;
+  }
     switch(error.response.status){
       case 403:
         setEmptyMessage('Access denied. You do not have permission to view this resource.');
@@ -111,40 +119,101 @@ function getUserIdFromStorage() {
 
 
 //setting initial id
-useEffect(()=>{
- const currentUserID = getUserIdFromStorage();
-
- if(currentUserID){
-  setPatientId(currentUserID);
-  return;
- }else{
-setPatientId(1);//dummyid
- }
-return;
-}
-  ,[])
 
 
-
-//intial records set before filtration
 useEffect(() => {
-  if(Number(patientId) === 1){
-    setRecords(DUMMY_RECORDS_FOR_PATIENT_1);
-    return;
-  } else if (Number(patientId) === 2){
-    setRecords(DUMMY_RECORDS_FOR_PATIENT_2)
-  }else {
-    setRecords(DUMMY_RECORDS_FOR_PATIENT_2)
-  }
-  //retrieveRecords();
-}, [patientId]);
+  const initialize = async () => {
+const userRole = user?.role;
+if(userRole === "PATIENT"){
+      try {
+          const userProfile = await patientApi.getProfile();
+          console.log("userProfile:", userProfile);
+          const id = userProfile.data.id;
+          console.log("id:", id);
+          setPatientId(id);
+          await retrieveRecords(id);  // pass id directly, don't rely on state
+          return;
+      } catch (error) {
+          console.error("Could not fetch patient:", error);
+          setPatientId(1);
+          setRecords(DUMMY_RECORDS_FOR_PATIENT_1);
+          return;
+      }
+    }
+
+     // Staff or Admin — use patient ID from URL params
+    if (urlPatientId && !isNaN(Number(urlPatientId))) {
+      setPatientId(urlPatientId);
+      await retrieveRecords(urlPatientId);
+    }
+
+  };
+
+
+
+
+  initialize();
+
+
+}, []);
+
+
+// useEffect(()=>{
+
+//   try{
+//   id = fetchId()
+// setPatientId(id);
+//   } catch(erorr){
+//     console.log("could not fetch patientId")
+//     setPatientId(1);
+//   }
+
+
+
+
+// //  const currentUserID = getUserIdFromStorage();
+
+// //  if(currentUserID){
+// //   setPatientId(currentUserID);
+// //   return;
+// //  }else{
+// // setPatientId(1);//dummyid
+// //  }
+// return;
+// }
+//   ,[])
+
+
+
+// //intial records set before filtration
+// useEffect(() => {
+//   retrieveRecords();
+
+//   if(records) return;
+//   if(Number(patientId) === 1){
+//     setRecords(DUMMY_RECORDS_FOR_PATIENT_1);
+//     return;
+//   } else if (Number(patientId) === 2){
+//     setRecords(DUMMY_RECORDS_FOR_PATIENT_2)
+//   }else {
+//     setRecords(DUMMY_RECORDS_FOR_PATIENT_2)
+//   }
+  
+// }, [patientId]);
 
  const handleFilter = (filters) => {
-  retrieveRecords(filters);
+  const params = {};
+  if (filters.recordType && filters.recordType !== 'all') {
+    params.record_type = filters.recordType;
+  }
+  if (filters.fromDate) {
+    params.from_date = filters.fromDate;
+  }
+  retrieveRecords(patientId, params);
  }
  const handleRowClick = (record) => {
   navigate(`/patients/me/records/currentRecord`,{
-    state: {id:patientId,recordId:record.record_id}
+    state: {patientId:patientId,recordId:record.id}
   });
  }
 
@@ -155,7 +224,7 @@ useEffect(() => {
   { key: 'record_type', label: 'Record Type',
     render:(value) => (<StatusBadge status={value}/>)
    },
-  { key: 'created_by', label: 'Created By' },
+  { key: 'created_by_name', label: 'Created By' },
   { key: 'created_at', label: 'Created At',
     render: (value) => (value ? new Date(value).toLocaleString() : 'N/A'),
   },
@@ -178,10 +247,13 @@ useEffect(() => {
       onChange={(e) => setRecordType(e.target.value)}
       >
       <option value="all">All</option>
-      <option value="diagnosis">Diagnosis</option>
-      <option value="lab_result">Lab Result</option>
-      <option value="prescription">Prescription</option>
-      <option value="imaging">Imaging</option>
+      <option value="DIAGNOSIS">Diagnosis</option>
+      <option value="LAB_RESULT">Lab Result</option>
+      <option value="PRESCRIPTION">Prescription</option>
+      <option value="IMAGING">Imaging</option>
+      <option value="DISCHARGE_SUMMARY">Discharge Summary</option>
+      <option value="VISIT_SUMMARY">Visit Summary</option>
+      <option value="OTHER">Other</option>
     </select>
 </div>
     
@@ -200,7 +272,7 @@ useEffect(() => {
   </div>
   </div>
 {/* TODO: Add DataTable with MedicalRecord data */}
-
+{console.log(records)}
     
     <div>
     <DataTable columns={columns} data={records} emptyMessage={emptyMessage} onRowClick={handleRowClick} />

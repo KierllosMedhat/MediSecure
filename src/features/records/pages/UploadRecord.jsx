@@ -19,18 +19,35 @@ import { Card, Button, Input } from '../../../components/ui';
 
 import './RecordPages.css';
 import { useState,useRef,useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate,useLocation } from 'react-router-dom';
 import { useFormik,Formik, Form, Field, ErrorMessage } from 'formik';
 import DragAndDropFileUpload from '../components/DragAndDropFileUpload';
 import DocumentSection from '../components/DocumentSection';
 import * as Yup from 'yup';
 import { mergeConfig } from 'axios';
+import recordsApi from '../../../api/services/recordsService';
+import patientApi from '../../../api/services/patientService';
+import {useAuth} from '../../auth/hooks/useAuth';
 export default function UploadRecord() {
-  //const { id: patientId} = useParams();
-  //const patientId = 1;
-  // user data retreival
-const [patientId,setPatientId] = useState(null);
+  const { id: urlPatientId } = useParams();
+const location = useLocation();
+const { user } = useAuth();
+const [patientId, setPatientId] = useState(null);
 
+useEffect(() => {
+  if (!user) return;  // wait for auth to resolve
+
+  if (user.role === "PATIENT") {
+    const id = location.state?.patientId;
+    if (id) setPatientId(id);
+    return;
+  }
+
+  // Staff / Admin
+  if (urlPatientId && !isNaN(Number(urlPatientId))) {
+    setPatientId(Number(urlPatientId));
+  }
+}, [user, urlPatientId, location.state?.patientId]);
 function getUserIdFromStorage() {
   try {
     const raw = sessionStorage.getItem('user');
@@ -44,28 +61,20 @@ function getUserIdFromStorage() {
     return null;
   }
 }
-useEffect(()=>{
-const currentUserID = getUserIdFromStorage();
 
-if(currentUserID){
-  setPatientId(currentUserID);
-  return;
-}
-else{
-  setPatientId(1); // dummyid
-}
-return
-},[])
 
 
   const navigate = useNavigate();
 const [returnedRecordId,setReturnedRecordId] = useState(null);
   const RECORD_TYPES = [
     { value: '', label: 'Select type…' },
-    { value: 'lab', label: 'Lab results' },
-    { value: 'imaging', label: 'Imaging' },
-    { value: 'prescription', label: 'Prescription' },
-    { value: 'visit', label: 'Visit summary' },
+    { value: 'LAB_RESULT', label: 'Lab Results' },
+    {value:'DIAGNOSIS',label:'Diagnosis'},
+    {value:'DISCHARGE_SUMMARY',label:'Discharge Summary'},
+    { value: 'IMAGING', label: 'Imaging' },
+    { value: 'PRESCRIPTION', label: 'Prescription' },
+    { value: 'VISIT_SUMMARY', label: 'Visit Summary' },
+    {value:'OTHER',label:'Other'},
   ];
 
 
@@ -109,8 +118,10 @@ if(!values.files.length){
 }
 
 
-      dummySubmit(values);
+      //dummySubmit(values);
+      formSubmit(values);
       setSubmitting(false);
+      setTimeout(() => navigate('/dashboard'), 1200);
     },
     validationSchema:recordValidationSchema,
   });
@@ -123,20 +134,21 @@ if(!values.files.length){
 
   const formSubmit = async (values) => {
     const { data } = await recordsApi.createRecord({
-      patient_id: patientId, 
+      patient: patientId, 
       record_type: values.record_type,
       title: values.title,
       description: values.description,
     });
-    setReturnedRecordId(data.recordId);
+    const newRecordId = data.id;
+    setReturnedRecordId(newRecordId);
 
-    if(returnedRecordId){
+    if(newRecordId){
      try{
-for (const rawfile of rawfiles){
-  //await recordsApi.uploadDocument(returnedRecordId,rawfile);
-}
-await new Promise((resolve) => setTimeout(resolve, 800)); // demo delay
-alert(`Upload success: ${files.length} files have been uploaded to record ${returnedRecordId }`);
+ for (const rawfile of rawfiles){
+   await recordsApi.uploadDocument(newRecordId, rawfile);
+ }
+ await new Promise((resolve) => setTimeout(resolve, 800)); // demo delay
+ alert(`Upload success: ${rawfiles.length} files have been uploaded to record ${newRecordId}`);
 
      }catch (error) {
       console.error(error);
@@ -145,6 +157,7 @@ alert(`Upload success: ${files.length} files have been uploaded to record ${retu
     } finally {
       
       formik.setFieldValue('files', []);
+      formik.resetForm();
       
     }
 
@@ -193,15 +206,21 @@ const handleUpload = async () => {
   }
  
     const formData = new FormData();
-    formData.append("file", file);
+    formData.append("file_path", file);
 
     SetRawFiles([...rawfiles,formData]);
 
+// date adjustment
+const now = new Date();
+const year = now.getFullYear();
+const month = String(now.getMonth() + 1).padStart(2, "0");
+const day = String(now.getDate()).padStart(2, "0");
+
     const newDocument = {
-      document_id: nextDocID,
-      record_id: 102,
+      //document_id: nextDocID,
+      record_id: returnedRecordId,
       file_name: file.name,
-      file_path: `/uploads/records/102/${file.name}.${file.type}`,
+      file_path: `documents/${year}/${month}/${day}/${file.name}`,
       file_type: file.type,
       file_size: file.size,
       uploaded_By: patientId,
@@ -212,6 +231,9 @@ const handleUpload = async () => {
     //add to documents
     setDocuments([...documents, newDocument]);
     setNextDocID(nextDocID + 1);
+
+    //add to rawfiles
+    SetRawFiles([...rawfiles,formData]);
 
     // add to formik
     formik.setFieldValue('files',[...formik.values.files,file]);

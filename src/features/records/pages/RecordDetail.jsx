@@ -23,10 +23,13 @@ import recordsApi from '../../../api/services/recordsService';
 import { useState, useEffect, useRef } from 'react';
 import DragAndDropFileUpload from '../components/DragAndDropFileUpload';
 import DocumentSection from '../components/DocumentSection';
+import {useAuth} from '../../auth/hooks/useAuth';
+import patientApi from '../../../api/services/patientService';
 export default function RecordDetail() {
-  //const { id: patientId, recordId } = useParams();
+  
   const location = useLocation();
-const {patientId,recordId} = location.state;
+var {patientId,recordId} = location.state;
+const {user} = useAuth();
   const navigate = useNavigate();
 
   // dummy data for testing
@@ -113,6 +116,7 @@ const {patientId,recordId} = location.state;
   const [documents, setDocuments] = useState([]);
   const [docError, setDocError] = useState(null);
   const [emptyMessage, setEmptyMessage] = useState("Something went wrong");
+  const [isLoading,setIsLoading] = useState(true);
 
   // drag and drop states
   const [file, setFile] = useState(null);
@@ -135,13 +139,19 @@ const {patientId,recordId} = location.state;
 
 
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file_path", file);
+
+      // date adjustment
+      const now = new Date();
+const year = now.getFullYear();
+const month = String(now.getMonth() + 1).padStart(2, "0");
+const day = String(now.getDate()).padStart(2, "0");
 
       const newDocument = {
-        document_id: nextDocID,
+        // document_id: nextDocID,
         record_id: recordId,
         file_name: file.name,
-        file_path: `/uploads/records/${recordId}/${file.name}.${file.type}`,
+        file_path: `documents/${year}/${month}/${day}/${file.name}`,
         file_type: file.type,
         file_size: file.size,
         uploaded_By: patientId,
@@ -152,7 +162,7 @@ const {patientId,recordId} = location.state;
       //add to documents
       setDocuments([...documents, newDocument]);
       setNextDocID(nextDocID + 1);
-      //await recordsApi.uploadDocument(recordId,formData);
+      await recordsApi.uploadDocument(recordId,formData);
 
       await new Promise((resolve) => setTimeout(resolve, 800)); // demo delay
       alert(`Upload success: ${file.name}`);
@@ -166,54 +176,85 @@ const {patientId,recordId} = location.state;
 
   }
 
-  const fetchRecord = async () => {
-    const response = await recordsApi.getRecordById(patientId, recordId);
+  const fetchRecord = async (id) => {
+    const response = await recordsApi.getRecordById(patientId, id);
+    console.log(response.data);
     setRecord(response.data);
+    if(response.data){
+      setRecError(null);
+    }
   }
   useEffect(() => {
 
-    if (Number(recordId) === 101) {
-      setRecord(DUMMY_RECORD_101);
-      return;
-    } else if (Number(recordId) === 102) {
-      setRecord(DUMMY_RECORD_102);
-      return;
-    }
+    // if (Number(recordId) === 101) {
+    //   setRecord(DUMMY_RECORD_101);
+    //   return;
+    // } else if (Number(recordId) === 102) {
+    //   setRecord(DUMMY_RECORD_102);
+    //   return;
+    // }
 
+
+    const initialize = async () => {
+      try {
+          // const userProfile = await patientApi.getProfile();
+          // console.log("userProfile:", userProfile);
+          // const id = userProfile.data.id;
+          // console.log("id:", id);
+          // //setPatientId(id);
+          // patientId=id;
+          await fetchRecord(recordId);  // pass id directly, don't rely on state
+      } catch (error) {
+          console.error("Could not fetch patient:", error);
+          //setPatientId(1);
+          //setRecords(DUMMY_RECORDS_FOR_PATIENT_1);
+      }
+  };
+if((patientId == undefined)||(patientId == null)){
+  initialize();
+}
     const run = async () => {
       try {
-        await fetchRecord();
+        await fetchRecord(recordId);
       } catch (error) {
         setRecError(error);
       }
     }
-    //run();
+    run();
   }, []);
 
-  const fetchDocuments = async () => {
-    const documents = await recordsApi.getDocumentsByRecord(recordId);
-    setDocuments(documents.data)
+  const fetchDocuments = async (recordID) => {
+    const documents = await recordsApi.getDocumentsByRecord(recordID);
+    console.log("fetching documents");
+    
+    setDocuments(documents.data.results);
+    console.log(documents.data.results);
+    if(documents.data.results){
+      console.log(`number of documents ${documents.data.results.length}`);
+      setDocError(null);
+    }
   }
 
   useEffect(() => {
 
-    if (Number(recordId) === 101) {
-      setDocuments(DUMMY_DOCUMENTS_FOR_RECORD_101);
-      return;
-    } else if (Number(recordId) === 102) {
-      setDocuments(DUMMY_DOCUMENTS_FOR_RECORD_102);
-      return;
-    }
+    // if (Number(recordId) === 101) {
+    //   setDocuments(DUMMY_DOCUMENTS_FOR_RECORD_101);
+    //   return;
+    // } else if (Number(recordId) === 102) {
+    //   setDocuments(DUMMY_DOCUMENTS_FOR_RECORD_102);
+    //   return;
+    // }
 
     const run = async () => {
       try {
-        await fetchDocuments();
+        await fetchDocuments(recordId);
       } catch (error) {
+        console.log(`Error of documents ${error}`);
         setDocError(error);
       }
     }
-    //if(record) run();
-  }, [record])
+    if(record && recordId) run();
+  }, [recordId,record])
 
 
 
@@ -270,7 +311,7 @@ const {patientId,recordId} = location.state;
     {
       key: 'description', label: 'Description'
     },
-    { key: 'created_by', label: 'Created By' },
+    { key: 'created_by_name', label: 'Created By' },
     {
       key: 'created_at', label: 'Created At',
       render: (value) => (value ? new Date(value).toLocaleString() : 'N/A'),

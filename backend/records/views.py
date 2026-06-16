@@ -16,14 +16,24 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser
-
+from rest_framework.exceptions import PermissionDenied
+from django.shortcuts import redirect
+from django.shortcuts import get_object_or_404
+from django.core.exceptions import ObjectDoesNotExist
+from django.http import FileResponse
+from django.conf import settings
 from .models import MedicalRecord, Document
+from consent.models import Consent
+from patients.models import Patient
+from staff.models import Staff
 from .serializers import (
     MedicalRecordListSerializer,
     MedicalRecordDetailSerializer,
     DocumentSerializer,
     RecentUploadsSerializer,
 )
+from audit.utils import log_action
+from audit.models import AuditLog
 
 
 # ──────────────────────────────────────────────────────
@@ -54,11 +64,80 @@ class MedicalRecordListCreateView(generics.ListCreateAPIView):
         # TODO (Fadi): Filter by patient_id from URL or from query params
         # TODO (Fadi): Apply optional filters: record_type, from_date
         # TODO (Fadi): Enforce patient can only see own records
-        pass
+      
+
+        UserRole = self.request.user.role
+        curr_staff=None
+        if UserRole == 'PATIENT':
+            try:
+                patientProfile = self.request.user.patient_profile
+            except ObjectDoesNotExist:
+                raise PermissionDenied("Patient profile not found.")
+            if patientProfile.id != patient_id:
+                raise PermissionDenied("You do not have permission to view this record")
+        elif UserRole == "DOCTOR" or UserRole == "NURSE" or UserRole == "BILLING_STAFF":
+            if not patient_id:
+                raise PermissionDenied("Invalid patient ID.")
+
+            try:
+                curr_staff = self.request.user.staff_profile
+            except ObjectDoesNotExist:
+                raise PermissionDenied("Only staff members can view records.")
+
+
+            consent = Consent.objects.filter(patient=patient_id, staff=curr_staff,is_active=True).first()
+            if not consent:
+                raise PermissionDenied("You do not have permission to view this record")
+                
+            
+
+
+        patientRecords = None
+
+        specificRecordType = self.request.query_params.get("record_type")
+        specificFromDate = self.request.query_params.get("from_date")
+        if specificRecordType and specificFromDate:
+            patientRecords = MedicalRecord.objects.select_related("created_by").filter(created_at__gte=specificFromDate,record_type=specificRecordType,patient=patient_id).all()
+        elif specificRecordType:
+            patientRecords = MedicalRecord.objects.select_related("created_by").filter(record_type=specificRecordType,patient=patient_id).all()
+        elif specificFromDate:
+            patientRecords = MedicalRecord.objects.select_related("created_by").filter(created_at__gte=specificFromDate,patient=patient_id).all()
+        else:
+            patientRecords = MedicalRecord.objects.select_related("created_by").filter(patient=patient_id).all()
+
+        patientRecords = patientRecords.order_by("-created_at")
+        
+        return patientRecords
 
     def perform_create(self, serializer):
-        # TODO (Fadi): Set created_by=self.request.user
-        pass
+        patient = serializer.validated_data.get('patient')
+        user_role = self.request.user.role
+
+        if patient is None:
+            raise PermissionDenied("Invalid Patient ID")
+
+
+        if user_role == "PATIENT":
+            if self.request.user.patient_profile != patient:
+                raise PermissionDenied("You can only create records for yourself.")
+
+        elif user_role in ("DOCTOR", "NURSE", "BILLING_STAFF"):
+            try:
+                curr_staff = self.request.user.staff_profile
+            except ObjectDoesNotExist:
+                raise PermissionDenied("Staff profile not found.")
+            has_consent = Consent.objects.filter(
+                patient=patient.id,
+                staff=curr_staff,
+                is_active=True,
+            ).exists()
+            if not has_consent:
+                raise PermissionDenied("You do not have consent to create records for this patient.")
+
+        elif user_role != "ADMIN":
+            raise PermissionDenied("You do not have permission to create records.")
+
+        serializer.save(created_by=self.request.user)
 
 
 # ──────────────────────────────────────────────────────
@@ -76,10 +155,48 @@ class MedicalRecordDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         patient_id = self.kwargs.get("patient_id")
-        # TODO (Fadi): Filter by patient_id if present (from patient-scoped URL)
-        # TODO (Fadi): Otherwise return all records visible to request.user
-        pass
+        user_role = self.request.user.role
 
+        if user_role == "PATIENT":
+            return MedicalRecord.objects.filter(
+                patient=self.request.user.patient_profile
+            )
+
+        if user_role == "ADMIN":
+            if patient_id:
+                return MedicalRecord.objects.select_related("created_by").filter(patient_id=patient_id)
+            return MedicalRecord.objects.select_related("created_by").all()
+
+        if user_role in ("DOCTOR", "NURSE", "BILLING_STAFF"):
+            try:
+                curr_staff = self.request.user.staff_profile
+            except ObjectDoesNotExist:
+                raise PermissionDenied("Staff profile not found.")
+
+            if patient_id:
+                has_consent = Consent.objects.filter(
+                    patient_id=patient_id,
+                    staff=curr_staff,
+                    is_active=True,
+                ).exists()
+
+                if not has_consent:
+                    raise PermissionDenied("You do not have consent to view this record.")
+
+                return MedicalRecord.objects.select_related("created_by").filter(patient_id=patient_id)
+
+            else:
+                consented_patients = Consent.objects.filter(
+                    staff=curr_staff,
+                    is_active=True,
+                ).values_list("patient_id", flat=True)
+
+                return MedicalRecord.objects.select_related("created_by").filter(
+                    patient_id__in=consented_patients
+                )
+
+            
+            
 
 # ──────────────────────────────────────────────────────
 # TODO (Fadi): Implement DocumentListView
@@ -95,9 +212,48 @@ class DocumentListView(generics.ListAPIView):
 
     def get_queryset(self):
         record_id = self.kwargs.get("record_id")
-        # TODO (Fadi): Return Document.objects.filter(record_id=record_id)
-        # TODO (Fadi): Check request.user has access to this record
-        pass
+        record = get_object_or_404(
+            MedicalRecord.objects.select_related("patient"),
+            id=record_id,
+        )
+        user_role = self.request.user.role
+
+        if user_role == "PATIENT":
+            if self.request.user.patient_profile != record.patient:
+                raise PermissionDenied("You do not have permission to view these documents.")
+            return Document.objects.select_related('uploaded_by').filter(record=record_id).all()
+        if user_role == "ADMIN":
+            return Document.objects.select_related('uploaded_by').filter(record=record_id).all()
+
+        if user_role in ("DOCTOR", "NURSE", "BILLING_STAFF"):
+            try:
+                curr_staff = self.request.user.staff_profile
+            except ObjectDoesNotExist:
+                raise PermissionDenied("Staff profile not found.")
+            has_consent = Consent.objects.filter(
+                patient=record.patient, staff=curr_staff, is_active=True
+            ).exists()
+            if not has_consent:
+                raise PermissionDenied("You do not have consent to view these documents.")
+            return Document.objects.select_related('uploaded_by').filter(record=record_id).all()
+
+        raise PermissionDenied("You do not have permission to view these documents.")
+    
+
+# ──────────────────────────────────────────────────────
+# TODO (Fadi): Implement DocumentView (dispatches GET → DocumentListView, POST → DocumentUploadView)
+class DocumentView(APIView):
+    """
+    Dispatches GET → DocumentListView, POST → DocumentUploadView.
+    Keeps list/upload concerns separated at the same URL.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        return DocumentListView.as_view()(request._request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        return DocumentUploadView.as_view()(request._request, *args, **kwargs)
 
 
 # ──────────────────────────────────────────────────────
@@ -118,15 +274,41 @@ class DocumentUploadView(generics.CreateAPIView):
     parser_classes = [MultiPartParser, FormParser]
 
     def get_queryset(self):
-        return Document.objects.all()
+        return Document.objects.select_related("record","uploaded_by").all()
 
     def perform_create(self, serializer):
         record_id = self.kwargs.get("record_id")
-        # TODO (Fadi): Validate record exists and request.user has access
-        # TODO (Fadi): Auto-set uploaded_by, file_type, file_size
-        # TODO (Fadi): Set record from URL record_id
-        pass
+        target_record = get_object_or_404(
+            MedicalRecord.objects.select_related("patient"),
+            id=record_id,
+        )
+        user_role = self.request.user.role
 
+        if user_role == "PATIENT":
+            if self.request.user.patient_profile != target_record.patient:
+                raise PermissionDenied("You can only upload documents to your own records.")
+            serializer.save(record=target_record)
+            return
+        if user_role == "ADMIN":
+            serializer.save(record=target_record)
+            return
+
+        if user_role in ("DOCTOR", "NURSE", "BILLING_STAFF"):
+            try:
+                curr_staff = self.request.user.staff_profile
+            except ObjectDoesNotExist:
+                raise PermissionDenied("Staff profile not found.")
+            has_consent = Consent.objects.filter(
+                patient=target_record.patient,
+                staff=curr_staff,
+                is_active=True,
+            ).exists()
+            if not has_consent:
+                raise PermissionDenied("You do not have consent to upload to this record.")
+            serializer.save(record=target_record)
+            return
+
+        raise PermissionDenied("You do not have permission to upload documents.")
 
 # ──────────────────────────────────────────────────────
 # TODO (Fadi): Implement DocumentDownloadView
@@ -149,8 +331,62 @@ class DocumentDownloadView(APIView):
         # TODO (Fadi): If local: return FileResponse(open(path, 'rb'), as_attachment=True)
         # TODO (Fadi): If S3: generate pre-signed URL and return redirect
         # TODO (Fadi): Log DOCUMENT_DOWNLOAD in audit log
-        pass
+        targetDocument = get_object_or_404(
+            Document.objects.select_related("record__patient"),
+            id=pk,
+        )
+        target_record = targetDocument.record
+        user_role = self.request.user.role
 
+        if user_role == "PATIENT":
+            if self.request.user.patient_profile != target_record.patient:
+                raise PermissionDenied("You do not have permission to download this document.")
+
+        elif user_role == "ADMIN":
+            pass
+
+        elif user_role in ("DOCTOR", "NURSE", "BILLING_STAFF"):
+            try:
+                curr_staff = self.request.user.staff_profile
+            except ObjectDoesNotExist:
+                raise PermissionDenied("Staff profile not found.")
+            has_consent = Consent.objects.filter(
+                patient=target_record.patient,
+                staff=curr_staff,
+                is_active=True,
+            ).exists()
+            if not has_consent:
+                raise PermissionDenied("You do not have consent to access this document.")
+        else:
+            raise PermissionDenied("You do not have permission to download this document.")
+
+                # Flip to True (or use settings) when S3 / django-storages is configured
+        use_s3 = getattr(settings, "USE_S3_STORAGE", False)
+
+        if use_s3:
+            # TODO (Fadi): when S3 is enabled:
+            # url = generate_presigned_url(bucket, targetDocument.file_path.name, ...)
+            # return redirect(url)
+            raise PermissionDenied("S3 download not configured yet")
+
+        # Local: file on disk (MEDIA_ROOT)
+        log_action(
+            user=request.user,
+            action=AuditLog.Action.DOCUMENT_DOWNLOAD,
+            entity_type=AuditLog.EntityType.DOCUMENT,
+            entity_id=targetDocument.id,
+            request=request,
+            details={
+                "record_id": target_record.id,
+                "file_name": targetDocument.file_name,
+                "file_type": targetDocument.file_type,
+            },
+        )
+        return FileResponse(
+            targetDocument.file_path.open("rb"),
+            as_attachment=True,
+            filename=targetDocument.file_name,
+        )
 
 # ──────────────────────────────────────────────────────
 # TODO (Fadi): Implement DocumentDeleteView
@@ -164,13 +400,28 @@ class DocumentDeleteView(generics.DestroyAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        # TODO (Fadi): Return queryset filtered to accessible documents
-        pass
+        user_role = self.request.user.role
+
+        if user_role == "ADMIN":
+            return Document.objects.select_related("record__patient").all()
+
+        if user_role in ("DOCTOR", "NURSE", "BILLING_STAFF"):
+            return Document.objects.select_related("record__patient").filter(
+                uploaded_by=self.request.user
+            )
+
+        return Document.objects.none()
+        
 
     def perform_destroy(self, instance):
         # TODO (Fadi): Delete the physical file from storage
         # TODO (Fadi): Then call instance.delete()
-        pass
+        file_storage = instance.file_path.storage
+        file_name    = instance.file_path.name
+        instance.delete()
+        if file_name and file_storage.exists(file_name):
+            file_storage.delete(file_name)
+        
 
 
 # ──────────────────────────────────────────────────────
@@ -186,5 +437,29 @@ class RecentUploadsView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        # TODO (Fadi): Return last 10 documents accessible to request.user
-        pass
+        user_role = self.request.user.role
+
+        if user_role == "ADMIN":
+            return Document.objects.select_related(
+                "record", "uploaded_by"
+            ).all().order_by("-created_at")[:10]
+
+        if user_role in ("DOCTOR", "NURSE", "BILLING_STAFF"):
+            try:
+                curr_staff = self.request.user.staff_profile
+            except ObjectDoesNotExist:
+                return Document.objects.none()
+
+            consented_ids = Consent.objects.filter(
+                staff=curr_staff,
+                is_active=True,
+            ).values_list("patient_id", flat=True)
+
+            return Document.objects.select_related(
+                "record", "uploaded_by"
+            ).filter(
+                record__patient_id__in=consented_ids
+            ).order_by("-created_at")[:10]
+
+        return Document.objects.none()
+        

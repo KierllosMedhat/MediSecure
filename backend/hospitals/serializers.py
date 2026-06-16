@@ -28,4 +28,4 @@ class HospitalSerializer(serializers.ModelSerializer):
 
     def get_staff_count(self, obj):
         # TODO (Fadi): Return obj.staff_members.count()
-        pass
+        return obj.staff_members.count()
