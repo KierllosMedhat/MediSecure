@@ -27,14 +27,27 @@ import * as Yup from 'yup';
 import { mergeConfig } from 'axios';
 import recordsApi from '../../../api/services/recordsService';
 import patientApi from '../../../api/services/patientService';
+import {useAuth} from '../../auth/hooks/useAuth';
 export default function UploadRecord() {
-  //const { id: patientId} = useParams();
-  //const patientId = 1;
-  const location = useLocation();
-  var {patientId} = location.state;
-  // user data retreival
-//const [patientId,setPatientId] = useState(null);
+  const { id: urlPatientId } = useParams();
+const location = useLocation();
+const { user } = useAuth();
+const [patientId, setPatientId] = useState(null);
 
+useEffect(() => {
+  if (!user) return;  // wait for auth to resolve
+
+  if (user.role === "PATIENT") {
+    const id = location.state?.patientId;
+    if (id) setPatientId(id);
+    return;
+  }
+
+  // Staff / Admin
+  if (urlPatientId && !isNaN(Number(urlPatientId))) {
+    setPatientId(Number(urlPatientId));
+  }
+}, [user, urlPatientId, location.state?.patientId]);
 function getUserIdFromStorage() {
   try {
     const raw = sessionStorage.getItem('user');

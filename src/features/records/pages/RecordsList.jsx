@@ -24,7 +24,8 @@ import { useNavigate } from 'react-router-dom';
 import {useAuth} from '../../auth/hooks/useAuth';
 import { useState,useEffect } from 'react';
 export default function RecordsList() {
-  //const { id: patientId } = useParams();
+  const { id: urlPatientId } = useParams();
+
   const {user} = useAuth();
   const navigate = useNavigate();
 const [patientId,setPatientId] = useState(null);
@@ -122,6 +123,8 @@ function getUserIdFromStorage() {
 
 useEffect(() => {
   const initialize = async () => {
+const userRole = user?.role;
+if(userRole === "PATIENT"){
       try {
           const userProfile = await patientApi.getProfile();
           console.log("userProfile:", userProfile);
@@ -129,14 +132,29 @@ useEffect(() => {
           console.log("id:", id);
           setPatientId(id);
           await retrieveRecords(id);  // pass id directly, don't rely on state
+          return;
       } catch (error) {
           console.error("Could not fetch patient:", error);
           setPatientId(1);
           setRecords(DUMMY_RECORDS_FOR_PATIENT_1);
+          return;
       }
+    }
+
+     // Staff or Admin — use patient ID from URL params
+    if (urlPatientId && !isNaN(Number(urlPatientId))) {
+      setPatientId(urlPatientId);
+      await retrieveRecords(urlPatientId);
+    }
+
   };
 
+
+
+
   initialize();
+
+
 }, []);
 
 
