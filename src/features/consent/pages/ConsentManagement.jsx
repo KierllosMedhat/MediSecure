@@ -33,6 +33,7 @@ export default function ConsentManagement() {
   }, [patientId]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchConsents();
   }, [fetchConsents]);
 
@@ -127,7 +128,7 @@ export default function ConsentManagement() {
         </p>
       </div>
 
-      <div
+      {/* <div
         style={{
           display: "flex",
           justifyContent: "flex-end",
@@ -137,7 +138,7 @@ export default function ConsentManagement() {
         <Button onClick={() => setModalOpen(true)} variant="primary">
           + Grant Access
         </Button>
-      </div>
+      </div> */}
 
       {pendingRequests.length > 0 && (
         <div style={{ marginBottom: "2rem" }}>
