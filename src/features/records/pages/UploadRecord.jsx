@@ -16,6 +16,7 @@
  * - Navigate back on success
  */
 import './RecordPages.css';
+<<<<<<< HEAD
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useFormik } from 'formik';
@@ -23,7 +24,38 @@ import DragAndDropFileUpload from '../components/DragAndDropFileUpload';
 import DocumentSection from '../components/DocumentSection';
 import * as Yup from 'yup';
 import recordsApi from '../../../api/services/recordsService';
+=======
+import { useState,useRef,useEffect } from 'react';
+import { useParams, useNavigate,useLocation } from 'react-router-dom';
+import { useFormik,Formik, Form, Field, ErrorMessage } from 'formik';
+import DragAndDropFileUpload from '../components/DragAndDropFileUpload';
+import DocumentSection from '../components/DocumentSection';
+import * as Yup from 'yup';
+import { mergeConfig } from 'axios';
+import recordsApi from '../../../api/services/recordsService';
+import patientApi from '../../../api/services/patientService';
+import {useAuth} from '../../auth/hooks/useAuth';
+export default function UploadRecord() {
+  const { id: urlPatientId } = useParams();
+const location = useLocation();
+const { user } = useAuth();
+const [patientId, setPatientId] = useState(null);
+>>>>>>> 2347680b7caed42fb1c6f6240057f736e933ebb1
 
+useEffect(() => {
+  if (!user) return;  // wait for auth to resolve
+
+  if (user.role === "PATIENT") {
+    const id = location.state?.patientId;
+    if (id) setPatientId(id);
+    return;
+  }
+
+  // Staff / Admin
+  if (urlPatientId && !isNaN(Number(urlPatientId))) {
+    setPatientId(Number(urlPatientId));
+  }
+}, [user, urlPatientId, location.state?.patientId]);
 function getUserIdFromStorage() {
   try {
     const raw = sessionStorage.getItem('user');
@@ -35,6 +67,11 @@ function getUserIdFromStorage() {
     return null;
   }
 }
+<<<<<<< HEAD
+=======
+
+
+>>>>>>> 2347680b7caed42fb1c6f6240057f736e933ebb1
 
 export default function UploadRecord() {
   const { id: patientIdParam } = useParams();
@@ -48,6 +85,7 @@ export default function UploadRecord() {
 const [returnedRecordId,setReturnedRecordId] = useState(null);
   const RECORD_TYPES = [
     { value: '', label: 'Select type…' },
+<<<<<<< HEAD
     { value: 'lab_result', label: 'Lab results' },
     { value: 'imaging', label: 'Imaging' },
     { value: 'prescription', label: 'Prescription' },
@@ -55,6 +93,15 @@ const [returnedRecordId,setReturnedRecordId] = useState(null);
     { value: 'diagnosis', label: 'Diagnosis' },
     { value: 'discharge_summary', label: 'Discharge Summary' },
     { value: 'other', label: 'Other' },
+=======
+    { value: 'LAB_RESULT', label: 'Lab Results' },
+    {value:'DIAGNOSIS',label:'Diagnosis'},
+    {value:'DISCHARGE_SUMMARY',label:'Discharge Summary'},
+    { value: 'IMAGING', label: 'Imaging' },
+    { value: 'PRESCRIPTION', label: 'Prescription' },
+    { value: 'VISIT_SUMMARY', label: 'Visit Summary' },
+    {value:'OTHER',label:'Other'},
+>>>>>>> 2347680b7caed42fb1c6f6240057f736e933ebb1
   ];
 
 
@@ -90,6 +137,7 @@ const [returnedRecordId,setReturnedRecordId] = useState(null);
       record_type: "",
       files:[],
     },
+<<<<<<< HEAD
     onSubmit: async (values, { setSubmitting }) => {
       if(!values.files.length){
         setSubmitting(false);
@@ -103,11 +151,26 @@ const [returnedRecordId,setReturnedRecordId] = useState(null);
       } finally {
         setSubmitting(false);
       }
+=======
+    onSubmit: (values, { setSubmitting }) => {
+
+if(!values.files.length){
+  setSubmitting(false);
+  alert("Add files to create record");
+}
+
+
+      //dummySubmit(values);
+      formSubmit(values);
+      setSubmitting(false);
+      setTimeout(() => navigate('/dashboard'), 1200);
+>>>>>>> 2347680b7caed42fb1c6f6240057f736e933ebb1
     },
     validationSchema:recordValidationSchema,
   });
 
   const formSubmit = async (values) => {
+<<<<<<< HEAD
     try {
       const payload = {
         record_type: values.record_type.toUpperCase(),
@@ -145,6 +208,42 @@ const [returnedRecordId,setReturnedRecordId] = useState(null);
       const msg = error.response ? JSON.stringify(error.response.data) : error.message;
       alert("Failed to create the record: " + msg);
     } finally { };
+=======
+    const { data } = await recordsApi.createRecord({
+      patient: patientId, 
+      record_type: values.record_type,
+      title: values.title,
+      description: values.description,
+    });
+    const newRecordId = data.id;
+    setReturnedRecordId(newRecordId);
+
+    if(newRecordId){
+     try{
+ for (const rawfile of rawfiles){
+   await recordsApi.uploadDocument(newRecordId, rawfile);
+ }
+ await new Promise((resolve) => setTimeout(resolve, 800)); // demo delay
+ alert(`Upload success: ${rawfiles.length} files have been uploaded to record ${newRecordId}`);
+
+     }catch (error) {
+      console.error(error);
+      alert("Upload failed.");
+      
+    } finally {
+      
+      formik.setFieldValue('files', []);
+      formik.resetForm();
+      
+    }
+
+
+    }else {
+      alert("could not create record");
+      return;
+    }
+    return data; 
+>>>>>>> 2347680b7caed42fb1c6f6240057f736e933ebb1
   };
 
 // uploading document handling
@@ -188,11 +287,17 @@ const handleUpload = async () => {
 
     SetRawFiles([...rawfiles,formData]);
 
+// date adjustment
+const now = new Date();
+const year = now.getFullYear();
+const month = String(now.getMonth() + 1).padStart(2, "0");
+const day = String(now.getDate()).padStart(2, "0");
+
     const newDocument = {
-      document_id: nextDocID,
-      record_id: 102,
+      //document_id: nextDocID,
+      record_id: returnedRecordId,
       file_name: file.name,
-      file_path: `/uploads/records/102/${file.name}.${file.type}`,
+      file_path: `documents/${year}/${month}/${day}/${file.name}`,
       file_type: file.type,
       file_size: file.size,
       uploaded_By: patientId,
@@ -203,6 +308,9 @@ const handleUpload = async () => {
     //add to documents
     setDocuments([...documents, newDocument]);
     setNextDocID(nextDocID + 1);
+
+    //add to rawfiles
+    SetRawFiles([...rawfiles,formData]);
 
     // add to formik
     formik.setFieldValue('files',[...formik.values.files,file]);

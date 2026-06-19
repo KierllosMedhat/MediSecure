@@ -50,15 +50,30 @@ export default function PaymentsPage() {
         ]);
 
         setBalance({
-          amount: balanceRes.data.balance,
+          amount: balanceRes.data.balance || 0,
           currency: balanceRes.data.currency || "EGP",
         });
 
+<<<<<<< HEAD
         const historyData = historyRes.data.results || historyRes.data || [];
         setHistory(historyData);
 
         const pending = historyData.filter(
           (item) => item.status === "PENDING" || item.status === "PROCESSING",
+=======
+        // Ensure history is an array
+        const historyData = Array.isArray(historyRes.data)
+          ? historyRes.data
+          : historyRes.data.results || [];
+        setHistory(historyData);
+
+        const pending = historyData.filter(
+          (item) =>
+            item.Status === "PENDING" ||
+            item.Status === "PROCESSING" ||
+            item.status === "PENDING" ||
+            item.status === "PROCESSING",
+>>>>>>> 2347680b7caed42fb1c6f6240057f736e933ebb1
         );
         setPendingBills(pending);
       } catch (error) {
@@ -75,11 +90,17 @@ export default function PaymentsPage() {
     e.preventDefault();
     setIsProcessing(true);
     try {
-      const response = await paymentApi.payWithFawry(fawryPayload);
+      // Use balance amount if payload amount is not set
+      const payload = {
+        ...fawryPayload,
+        amount: fawryPayload.amount || balance.amount,
+      };
+      const response = await paymentApi.payWithFawry(payload);
       alert(`Fawry Code Generated: ${response.data.fawry_reference_number}`);
       setFawryModalOpen(false);
     } catch (error) {
       console.error("Fawry payment failed:", error);
+      alert("Failed to generate Fawry code. Please try again.");
     } finally {
       setIsProcessing(false);
     }
@@ -89,14 +110,22 @@ export default function PaymentsPage() {
     e.preventDefault();
     setIsProcessing(true);
     try {
-      const response = await paymentApi.payWithCard(cardPayload);
+      // Use balance amount if payload amount is not set
+      const payload = {
+        ...cardPayload,
+        amount: cardPayload.amount || balance.amount,
+      };
+      const response = await paymentApi.payWithCard(payload);
       if (response.data.payment_url) {
         window.location.href = response.data.payment_url;
       } else {
-        navigate(`/payments/receipt/${response.data.payment_id}`);
+        navigate(
+          `/payments/receipt/${response.data.payment_id || response.data.Payment_Id}`,
+        );
       }
     } catch (error) {
       console.error("Card payment failed:", error);
+      alert("Card payment failed. Please check your details and try again.");
     } finally {
       setIsProcessing(false);
     }
@@ -130,13 +159,13 @@ export default function PaymentsPage() {
         className="payments-grid"
         style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2rem" }}
       >
-        {/* العمود الأول: الرصيد والفواتير */}
+        {/* First Column: Balance and Pending Bills */}
         <div>
           {/* Balance card */}
           <Card className="balance-card">
             <h3 className="balance-label">Outstanding Balance</h3>
             <h2 className="balance-amount">
-              {balance.amount.toFixed(2)} {balance.currency}
+              {Number(balance.amount).toFixed(2)} {balance.currency}
             </h2>
 
             <div style={{ display: "flex", gap: "10px", marginTop: "1.5rem" }}>
@@ -144,6 +173,7 @@ export default function PaymentsPage() {
                 onClick={() => setCardModalOpen(true)}
                 variant="primary"
                 style={{ flex: 1 }}
+                disabled={balance.amount <= 0}
               >
                 Pay with Card
               </Button>
@@ -151,6 +181,7 @@ export default function PaymentsPage() {
                 onClick={() => setFawryModalOpen(true)}
                 variant="secondary"
                 style={{ flex: 1 }}
+                disabled={balance.amount <= 0}
               >
                 Pay with Fawry
               </Button>
@@ -161,18 +192,13 @@ export default function PaymentsPage() {
           <section className="bills-section">
             <h3 className="section-title">Pending Bills</h3>
             <div className="bills-list">
-              {pendingBills.map((bill) => (
-                <div
-                  key={bill.id}
-                  className={`bill-item ${bill.status === "overdue" ? "overdue" : ""}`}
-                >
+              {pendingBills.length > 0 ? (
+                pendingBills.map((bill) => (
                   <div
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "4px",
-                    }}
+                    key={bill.Payment_Id || bill.id || Math.random()}
+                    className={`bill-item ${bill.Status === "OVERDUE" || bill.status === "OVERDUE" ? "overdue" : ""}`}
                   >
+<<<<<<< HEAD
                     <strong style={{ color: "#333" }}>
                       {bill.description || bill.payment_type}
                     </strong>
@@ -187,24 +213,61 @@ export default function PaymentsPage() {
                   </div>
                   <div style={{ textAlign: "right" }}>
                     <strong
+=======
+                    <div
+>>>>>>> 2347680b7caed42fb1c6f6240057f736e933ebb1
                       style={{
-                        display: "block",
-                        color: bill.status === "overdue" ? "#dc3545" : "#333",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "4px",
                       }}
                     >
+<<<<<<< HEAD
                       {Number(bill.amount).toFixed(2)} {balance.currency}
                     </strong>
                     {bill.status === "overdue" && (
                       <span className="overdue-badge">OVERDUE</span>
                     )}
+=======
+                      <strong style={{ color: "#333" }}>
+                        {bill.Payment_Type || bill.payment_type || "Service"}
+                      </strong>
+                      <span style={{ fontSize: "0.85rem", color: "#666" }}>
+                        ID: {bill.Payment_Id || bill.payment_id}
+                      </span>
+                    </div>
+                    <div style={{ textAlign: "right" }}>
+                      <strong
+                        style={{
+                          display: "block",
+                          color:
+                            bill.Status === "OVERDUE" ||
+                            bill.status === "OVERDUE"
+                              ? "#dc3545"
+                              : "#333",
+                        }}
+                      >
+                        {Number(bill.Amount || bill.amount).toFixed(2)}{" "}
+                        {bill.Currency || bill.currency || "EGP"}
+                      </strong>
+                      {(bill.Status === "OVERDUE" ||
+                        bill.status === "OVERDUE") && (
+                        <span className="overdue-badge">OVERDUE</span>
+                      )}
+                    </div>
+>>>>>>> 2347680b7caed42fb1c6f6240057f736e933ebb1
                   </div>
-                </div>
-              ))}
+                ))
+              ) : (
+                <p style={{ color: "#999", padding: "1rem 0" }}>
+                  No pending bills at the moment.
+                </p>
+              )}
             </div>
           </section>
         </div>
 
-        {/* العمود الثاني: Payment History */}
+        {/* Second Column: Payment History */}
         <div
           style={{
             backgroundColor: "#fff",
@@ -236,6 +299,7 @@ export default function PaymentsPage() {
               </thead>
               <tbody>
                 {history.length > 0 ? (
+<<<<<<< HEAD
                   history.map((record) => (
                     <tr
                       key={record.id}
@@ -274,6 +338,57 @@ export default function PaymentsPage() {
                       </td>
                     </tr>
                   ))
+=======
+                  history.map((record) => {
+                    const status = record.Status || record.status;
+                    const id =
+                      record.Payment_Id || record.payment_id || record.id;
+                    return (
+                      <tr key={id} style={{ borderBottom: "1px solid #eee" }}>
+                        <td
+                          style={{
+                            padding: "12px",
+                            fontWeight: "500",
+                            color: "#333",
+                          }}
+                        >
+                          {Number(record.Amount || record.amount).toFixed(2)}{" "}
+                          {record.Currency || record.currency || "EGP"}
+                        </td>
+                        <td style={{ padding: "12px" }}>
+                          <StatusBadge
+                            status={
+                              record.Gateway_Type ||
+                              record.gateway_type ||
+                              "UNKNOWN"
+                            }
+                          />
+                        </td>
+                        <td style={{ padding: "12px" }}>
+                          <StatusBadge status={status} />
+                        </td>
+                        <td style={{ padding: "12px", textAlign: "right" }}>
+                          {status === "COMPLETED" || status === "PAID" ? (
+                            <Button
+                              size="small"
+                              onClick={() =>
+                                navigate(`/payments/receipt/${id}`)
+                              }
+                            >
+                              Receipt
+                            </Button>
+                          ) : (
+                            <span
+                              style={{ color: "#999", fontSize: "0.85rem" }}
+                            >
+                              Pending
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
+>>>>>>> 2347680b7caed42fb1c6f6240057f736e933ebb1
                 ) : (
                   <tr>
                     <td
@@ -284,7 +399,7 @@ export default function PaymentsPage() {
                         color: "#999",
                       }}
                     >
-                      Loading transactions...
+                      No payment history found.
                     </td>
                   </tr>
                 )}

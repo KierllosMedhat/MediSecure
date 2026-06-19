@@ -22,7 +22,7 @@ const recordsApi = {
     apiClient.get(`/patients/${patientId}/records/${recordId}`),
 
   createRecord: (data) =>
-    apiClient.post('/records', data),
+    apiClient.post('/records/', data),
   // data: { patient_id, record_type, title, description }
 
   updateRecord: (recordId, data) =>

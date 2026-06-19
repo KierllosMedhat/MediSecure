@@ -21,6 +21,7 @@ class MedicalRecord(models.Model):
         IMAGING = "IMAGING", "Imaging"
         CONSULTATION = "CONSULTATION", "Consultation"
         DISCHARGE_SUMMARY = "DISCHARGE_SUMMARY", "Discharge Summary"
+        VISIT_SUMMARY = "VISIT_SUMMARY", "Visit Summary"
         OTHER = "OTHER", "Other"
 
     patient = models.ForeignKey(

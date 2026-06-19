@@ -11,11 +11,23 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { DataTable, Button, StatusBadge } from '../../../components/ui';
 import recordsApi from '../../../api/services/recordsService';
+<<<<<<< HEAD
 import consentApi from '../../../api/services/consentService';
 import './RecordPages.css';
 
 export default function RecordsList() {
   const { id: patientIdParam } = useParams();
+=======
+import patientApi from '../../../api/services/patientService';
+import './RecordPages.css';
+import { useNavigate } from 'react-router-dom';
+import {useAuth} from '../../auth/hooks/useAuth';
+import { useState,useEffect } from 'react';
+export default function RecordsList() {
+  const { id: urlPatientId } = useParams();
+
+  const {user} = useAuth();
+>>>>>>> 2347680b7caed42fb1c6f6240057f736e933ebb1
   const navigate = useNavigate();
 
   const currentUser = getUserFromStorage();
@@ -32,6 +44,7 @@ export default function RecordsList() {
   const [requestPurpose, setRequestPurpose] = useState('TREATMENT');
   const [isRequesting, setIsRequesting] = useState(false);
 
+<<<<<<< HEAD
   const retrieveRecords = async (filters = {}) => {
     try {
       const response = await recordsApi.getRecords(patientId, filters);
@@ -49,6 +62,29 @@ export default function RecordsList() {
           setConsentStatus('DENIED');
         }
       } else if (error.response?.status === 404) {
+=======
+const [recordType,setRecordType] = useState('all');
+const [fromDate,setFromDate] = useState('');
+
+const [emptyMessage,setEmptyMessage] = useState('No records found.');
+
+
+const retrieveRecords = async (id,filters={}) => {
+  try{
+  const response = await recordsApi.getRecords(id, filters);
+  setRecords([...response.data.results]);
+  console.log(records);
+  } catch (error) {
+    if (!error.response) {
+      setEmptyMessage('Network error. Please check your connection.');
+      return;
+  }
+    switch(error.response.status){
+      case 403:
+        setEmptyMessage('Access denied. You do not have permission to view this resource.');
+        break;
+      case 404:
+>>>>>>> 2347680b7caed42fb1c6f6240057f736e933ebb1
         setEmptyMessage('The requested resource was not found.');
       } else {
         setEmptyMessage('An unexpected error occurred.');
@@ -100,6 +136,7 @@ export default function RecordsList() {
     retrieveRecords();
   }, [patientIdParam]);
 
+<<<<<<< HEAD
   const handleFilter = () => {
     retrieveRecords({ record_type: recordType !== 'all' ? recordType : undefined, from_date: fromDate });
   };
@@ -109,6 +146,9 @@ export default function RecordsList() {
       state: { id: patientId, recordId: record.record_id || record.id }
     });
   };
+=======
+//setting initial id
+>>>>>>> 2347680b7caed42fb1c6f6240057f736e933ebb1
 
   const columns = [
     { key: 'title', label: 'Title' },
@@ -117,6 +157,7 @@ export default function RecordsList() {
     { key: 'created_at', label: 'Created At', render: (value) => (value ? new Date(value).toLocaleString() : 'N/A') },
   ];
 
+<<<<<<< HEAD
   if (consentStatus === 'PENDING') {
     return (
       <div className="records-filter-bar" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '3rem', gap: '1rem' }}>
@@ -126,6 +167,117 @@ export default function RecordsList() {
       </div>
     );
   }
+=======
+useEffect(() => {
+  const initialize = async () => {
+const userRole = user?.role;
+if(userRole === "PATIENT"){
+      try {
+          const userProfile = await patientApi.getProfile();
+          console.log("userProfile:", userProfile);
+          const id = userProfile.data.id;
+          console.log("id:", id);
+          setPatientId(id);
+          await retrieveRecords(id);  // pass id directly, don't rely on state
+          return;
+      } catch (error) {
+          console.error("Could not fetch patient:", error);
+          setPatientId(1);
+          setRecords(DUMMY_RECORDS_FOR_PATIENT_1);
+          return;
+      }
+    }
+
+     // Staff or Admin — use patient ID from URL params
+    if (urlPatientId && !isNaN(Number(urlPatientId))) {
+      setPatientId(urlPatientId);
+      await retrieveRecords(urlPatientId);
+    }
+
+  };
+
+
+
+
+  initialize();
+
+
+}, []);
+
+
+// useEffect(()=>{
+
+//   try{
+//   id = fetchId()
+// setPatientId(id);
+//   } catch(erorr){
+//     console.log("could not fetch patientId")
+//     setPatientId(1);
+//   }
+
+
+
+
+// //  const currentUserID = getUserIdFromStorage();
+
+// //  if(currentUserID){
+// //   setPatientId(currentUserID);
+// //   return;
+// //  }else{
+// // setPatientId(1);//dummyid
+// //  }
+// return;
+// }
+//   ,[])
+
+
+
+// //intial records set before filtration
+// useEffect(() => {
+//   retrieveRecords();
+
+//   if(records) return;
+//   if(Number(patientId) === 1){
+//     setRecords(DUMMY_RECORDS_FOR_PATIENT_1);
+//     return;
+//   } else if (Number(patientId) === 2){
+//     setRecords(DUMMY_RECORDS_FOR_PATIENT_2)
+//   }else {
+//     setRecords(DUMMY_RECORDS_FOR_PATIENT_2)
+//   }
+  
+// }, [patientId]);
+
+ const handleFilter = (filters) => {
+  const params = {};
+  if (filters.recordType && filters.recordType !== 'all') {
+    params.record_type = filters.recordType;
+  }
+  if (filters.fromDate) {
+    params.from_date = filters.fromDate;
+  }
+  retrieveRecords(patientId, params);
+ }
+ const handleRowClick = (record) => {
+  navigate(`/patients/me/records/currentRecord`,{
+    state: {patientId:patientId,recordId:record.id}
+  });
+ }
+
+ //prepare columns
+
+ const columns = [
+  { key: 'title', label: 'Title' },
+  { key: 'record_type', label: 'Record Type',
+    render:(value) => (<StatusBadge status={value}/>)
+   },
+  { key: 'created_by_name', label: 'Created By' },
+  { key: 'created_at', label: 'Created At',
+    render: (value) => (value ? new Date(value).toLocaleString() : 'N/A'),
+  },
+]
+
+>>>>>>> 2347680b7caed42fb1c6f6240057f736e933ebb1
 
   if (consentStatus === 'NONE' || consentStatus === 'DENIED' || consentStatus === 'REVOKED') {
     return (
@@ -153,6 +305,7 @@ export default function RecordsList() {
 
   return (
     <>
+<<<<<<< HEAD
       <div className="records-filter-bar">
         <div className="records-filter-field">
           <label className="records-filter-label" htmlFor="record-type">Record Type</label>
@@ -173,6 +326,50 @@ export default function RecordsList() {
           <Button onClick={handleFilter}>Filter</Button>
           <Button variant="primary" onClick={() => navigate(`/patients/${patientIdParam || 'me'}/records/upload`)}>Add Record</Button>
         </div>
+=======
+    <div className="records-filter-bar">
+    <div className="records-filter-field">
+      <label className="records-filter-label" htmlFor="record-type">Record Type</label>
+      
+
+      {/* TODO: Add filter bar (Record_type select, from_date picker) */}
+      <select
+      id="record-type"
+      className="records-filter-select"
+      value={recordType}
+      onChange={(e) => setRecordType(e.target.value)}
+      >
+      <option value="all">All</option>
+      <option value="DIAGNOSIS">Diagnosis</option>
+      <option value="LAB_RESULT">Lab Result</option>
+      <option value="PRESCRIPTION">Prescription</option>
+      <option value="IMAGING">Imaging</option>
+      <option value="DISCHARGE_SUMMARY">Discharge Summary</option>
+      <option value="VISIT_SUMMARY">Visit Summary</option>
+      <option value="OTHER">Other</option>
+    </select>
+</div>
+    
+  <div className="records-filter-field">
+    <label className="records-filter-label" htmlFor="from-date">From Date</label>
+    <input
+      type="date"
+      id="from-date"
+      className="records-filter-input"
+      value={fromDate}
+      onChange={(e) => setFromDate(e.target.value)}
+    />
+  </div>
+  <div className="records-filter-actions">
+    <Button onClick={() => handleFilter({recordType, fromDate})}>Filter</Button>
+  </div>
+  </div>
+{/* TODO: Add DataTable with MedicalRecord data */}
+{console.log(records)}
+    
+    <div>
+    <DataTable columns={columns} data={records} emptyMessage={emptyMessage} onRowClick={handleRowClick} />
+>>>>>>> 2347680b7caed42fb1c6f6240057f736e933ebb1
       </div>
     
       <div>
