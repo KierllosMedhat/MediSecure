@@ -20,7 +20,7 @@ import './Sidebar.css';
 
 const PATIENT_LINKS = [
   { to: '/dashboard', label: 'Dashboard', icon: <IoHomeOutline /> },
-  { to: '/patients/profile', label: 'My Profile', icon: <IoPersonOutline /> },
+  { to: '/profile', label: 'My Profile', icon: <IoPersonOutline /> },
   { to: '/patients/me/records', label: 'Health Records', icon: <IoDocumentTextOutline /> },
   { to: '/patients/me/consents', label: 'Consent', icon: <IoShieldCheckmarkOutline /> },
   { to: '/payments', label: 'Payments', icon: <IoCardOutline /> },
@@ -30,6 +30,8 @@ const PATIENT_LINKS = [
 
 const STAFF_LINKS = [
   { to: '/staff/dashboard', label: 'Dashboard', icon: <IoHomeOutline /> },
+  { to: '/profile', label: 'My Profile', icon: <IoPersonOutline /> },
+  { to: '/staff/patients', label: 'Patient Records', icon: <IoDocumentTextOutline /> },
   { to: '/appointments', label: 'Appointments', icon: <IoCalendarOutline /> },
   { to: '/notifications', label: 'Notifications', icon: <IoNotificationsOutline /> },
 ];
@@ -58,7 +60,7 @@ export default function Sidebar() {
     <aside className="sidebar">
       {/* Brand */}
       <div className="sidebar__brand">
-        <span className="sidebar__brand-icon">🛡️</span>
+        <img src="/favicon.png" alt="MediSecure Logo" className="sidebar__brand-img" />
         <span className="sidebar__brand-text">MediSecure</span>
       </div>
 

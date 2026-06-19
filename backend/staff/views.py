@@ -19,6 +19,7 @@ from .serializers import (
     StaffDetailSerializer,
     StaffCreateSerializer,
     StaffDashboardSerializer,
+    StaffProfileSerializer,
 )
 
 
@@ -115,23 +116,55 @@ class StaffDashboardView(APIView):
     permission_classes = [IsAuthenticated, IsStaffMember]
 
     def get(self, request):
+        today = timezone.now().date()
+        from patients.models import Patient
+        total_patients = Patient.objects.count()
+
+        if getattr(request.user, 'role', '') in ["ADMIN", "BILLING_STAFF"]:
+            from records.models import MedicalRecord
+            recent_records = list(
+                MedicalRecord.objects.all().order_by("-created_at").values("id", "title", "record_type", "created_at")[:5]
+            )
+            for rec in recent_records:
+                rec["created_at"] = rec["created_at"].isoformat()
+
+            from appointments.models import Appointment
+            upcoming_appointments_qs = Appointment.objects.filter(
+                scheduled_at__gte=timezone.now(),
+            ).exclude(
+                status__in=["CANCELLED", "NO_SHOW"]
+            ).order_by("scheduled_at").select_related("patient__user")[:5]
+
+            upcoming_appointments = [
+                {
+                    "id": appt.id,
+                    "date": appt.scheduled_at.isoformat(),
+                    "patient_name": f"{appt.patient.user.first_name} {appt.patient.user.last_name}".strip() or appt.patient.user.email,
+                    "status": appt.status,
+                    "type": appt.appointment_type,
+                }
+                for appt in upcoming_appointments_qs
+            ]
+
+            return Response({
+                "total_patients": total_patients,
+                "today_appointments": Appointment.objects.filter(scheduled_at__date=today).exclude(status__in=["CANCELLED", "NO_SHOW"]).count(),
+                "pending_consents": 0,
+                "recent_records": recent_records,
+                "upcoming_appointments": upcoming_appointments,
+            })
+
         try:
             staff = Staff.objects.get(user=request.user)
         except Staff.DoesNotExist:
-            return Response(
-                {"detail": "Staff profile not found."},
-                status=status.HTTP_404_NOT_FOUND,
-            )
-
-        today = timezone.now().date()
-
-        # Count unique patients this staff member has appointments with
-        total_patients = (
-            staff.appointments
-            .values("patient")
-            .distinct()
-            .count()
-        )
+            # Fallback for staff members without a profile (e.g., brand new doctors)
+            return Response({
+                "total_patients": total_patients,
+                "today_appointments": 0,
+                "pending_consents": 0,
+                "recent_records": [],
+                "upcoming_appointments": [],
+            })
 
         # Count today's non-cancelled appointments
         today_appointments = staff.appointments.filter(
@@ -140,8 +173,8 @@ class StaffDashboardView(APIView):
             status__in=["CANCELLED", "NO_SHOW"]
         ).count()
 
-        # Count active consents granted to this staff member
-        pending_consents = staff.consent_grants.filter(is_active=True).count()
+        # Count pending consents requested by this staff member
+        pending_consents = staff.consent_grants.filter(status="PENDING").count()
 
         # Last 5 medical records created by this staff member
         from records.models import MedicalRecord
@@ -155,12 +188,44 @@ class StaffDashboardView(APIView):
         for rec in recent_records:
             rec["created_at"] = rec["created_at"].isoformat()
 
+        # Get next 5 upcoming appointments
+        upcoming_appointments_qs = staff.appointments.filter(
+            scheduled_at__gte=timezone.now(),
+        ).exclude(
+            status__in=["CANCELLED", "NO_SHOW"]
+        ).order_by("scheduled_at").select_related("patient__user")[:5]
+
+        upcoming_appointments = [
+            {
+                "id": appt.id,
+                "date": appt.scheduled_at.isoformat(),
+                "patient_name": f"{appt.patient.user.first_name} {appt.patient.user.last_name}".strip() or appt.patient.user.email,
+                "status": appt.status,
+                "type": appt.appointment_type,
+            }
+            for appt in upcoming_appointments_qs
+        ]
+
         data = {
             "total_patients": total_patients,
             "today_appointments": today_appointments,
             "pending_consents": pending_consents,
             "recent_records": recent_records,
+            "upcoming_appointments": upcoming_appointments,
         }
 
         serializer = StaffDashboardSerializer(data)
         return Response(serializer.data)
+
+class StaffProfileView(generics.RetrieveUpdateAPIView):
+    """Retrieve and update the authenticated staff member's profile."""
+    serializer_class = StaffProfileSerializer
+    permission_classes = [IsAuthenticated, IsStaffMember]
+
+    def get_object(self):
+        try:
+            return self.request.user.staff_profile
+        except Staff.DoesNotExist:
+            from django.http import Http404
+            raise Http404("Staff profile not found.")
+

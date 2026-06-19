@@ -7,8 +7,8 @@ from .models import Consent
 
 # ──────────────────────────────────────────────────────
 # TODO (Abdullah): Customize ConsentAdmin
-#   - list_display: patient, staff, purpose, is_active, granted_at, revoked_at
-#   - list_filter: purpose, is_active
+#   - list_display: patient, staff, purpose, status, granted_at, revoked_at
+#   - list_filter: purpose, status
 #   - search_fields: patient__user__first_name, staff__user__first_name
 #   - Add date_hierarchy on granted_at
 # ──────────────────────────────────────────────────────
@@ -22,12 +22,12 @@ class ConsentAdmin(admin.ModelAdmin):
         "patient", 
         "staff", 
         "purpose", 
-        "is_active", 
+        "status", 
         "granted_at", 
         "revoked_at"
     )
     
-    list_filter = ("purpose", "is_active")
+    list_filter = ("purpose", "status")
     
     search_fields = (
         "patient__user__first_name", 

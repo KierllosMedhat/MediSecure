@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Card,
@@ -54,10 +54,11 @@ export default function PaymentsPage() {
           currency: balanceRes.data.currency || "EGP",
         });
 
-        setHistory(historyRes.data);
+        const historyData = historyRes.data.results || historyRes.data || [];
+        setHistory(historyData);
 
-        const pending = historyRes.data.filter(
-          (item) => item.Status === "PENDING" || item.Status === "PROCESSING",
+        const pending = historyData.filter(
+          (item) => item.status === "PENDING" || item.status === "PROCESSING",
         );
         setPendingBills(pending);
       } catch (error) {
@@ -173,10 +174,15 @@ export default function PaymentsPage() {
                     }}
                   >
                     <strong style={{ color: "#333" }}>
-                      {bill.description}
+                      {bill.description || bill.payment_type}
                     </strong>
-                    <span style={{ fontSize: "0.85rem", color: "#666" }}>
-                      Due: {bill.dueDate}
+                    {bill.appointment_info && (
+                      <span style={{ fontSize: "0.85rem", color: "var(--color-primary)", marginTop: "2px" }}>
+                        Appointment with Dr. {bill.appointment_info.doctor} on {bill.appointment_info.date}
+                      </span>
+                    )}
+                    <span style={{ fontSize: "0.85rem", color: "#666", marginTop: "4px" }}>
+                      Due: {new Date(bill.created_at).toLocaleDateString()}
                     </span>
                   </div>
                   <div style={{ textAlign: "right" }}>
@@ -186,7 +192,7 @@ export default function PaymentsPage() {
                         color: bill.status === "overdue" ? "#dc3545" : "#333",
                       }}
                     >
-                      {bill.amount.toFixed(2)} {balance.currency}
+                      {Number(bill.amount).toFixed(2)} {balance.currency}
                     </strong>
                     {bill.status === "overdue" && (
                       <span className="overdue-badge">OVERDUE</span>
@@ -232,7 +238,7 @@ export default function PaymentsPage() {
                 {history.length > 0 ? (
                   history.map((record) => (
                     <tr
-                      key={record.Payment_Id}
+                      key={record.id}
                       style={{ borderBottom: "1px solid #eee" }}
                     >
                       <td
@@ -242,21 +248,21 @@ export default function PaymentsPage() {
                           color: "#333",
                         }}
                       >
-                        {record.Amount.toFixed(2)} {record.Currency}
+                        {Number(record.amount).toFixed(2)} {record.currency}
                       </td>
                       <td style={{ padding: "12px" }}>
-                        <StatusBadge status={record.Gateway_Type} />
+                        <StatusBadge status={record.gateway_type} />
                       </td>
                       <td style={{ padding: "12px" }}>
-                        <StatusBadge status={record.Status} />
+                        <StatusBadge status={record.status} />
                       </td>
                       <td style={{ padding: "12px", textAlign: "right" }}>
-                        {record.Status === "COMPLETED" ? (
+                        {record.status === "PAID" || record.status === "COMPLETED" ? (
                           <Button
-                            size="small"
-                            onClick={() =>
-                              navigate(`/payments/receipt/${record.Payment_Id}`)
-                            }
+                              size="small"
+                              onClick={() =>
+                                navigate(`/payments/receipt/${record.id}`)
+                              }
                           >
                             Receipt
                           </Button>

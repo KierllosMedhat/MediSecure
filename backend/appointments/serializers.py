@@ -26,6 +26,10 @@ class AppointmentSerializer(serializers.ModelSerializer):
 
     patient_name = serializers.SerializerMethodField()
     staff_name = serializers.SerializerMethodField()
+    payment_id = serializers.SerializerMethodField()
+    payment_status = serializers.SerializerMethodField()
+    payment_amount = serializers.SerializerMethodField()
+    payment_currency = serializers.SerializerMethodField()
 
     class Meta:
         model = Appointment
@@ -34,8 +38,12 @@ class AppointmentSerializer(serializers.ModelSerializer):
             "scheduled_at", "duration_min", "status", "appointment_type",
             "location", "notes", "cancelled_reason",
             "created_at", "updated_at",
+            "payment_id", "payment_status", "payment_amount", "payment_currency"
         ]
-        read_only_fields = ["id", "status", "created_at", "updated_at"]
+        read_only_fields = ["id", "status", "created_at", "updated_at", "payment_id", "payment_status", "payment_amount", "payment_currency"]
+        extra_kwargs = {
+            "patient": {"required": False, "allow_null": True}
+        }
 
     def get_patient_name(self, obj):
         u = obj.patient.user
@@ -46,6 +54,22 @@ class AppointmentSerializer(serializers.ModelSerializer):
         u = obj.staff.user
         parts = [u.first_name, u.middle_name, u.last_name]
         return " ".join(p for p in parts if p).strip() or u.email
+
+    def get_payment_id(self, obj):
+        payment = obj.payments.order_by('-created_at').first()
+        return payment.id if payment else None
+
+    def get_payment_status(self, obj):
+        payment = obj.payments.order_by('-created_at').first()
+        return payment.status if payment else None
+
+    def get_payment_amount(self, obj):
+        payment = obj.payments.order_by('-created_at').first()
+        return str(payment.amount) if payment else None
+
+    def get_payment_currency(self, obj):
+        payment = obj.payments.order_by('-created_at').first()
+        return payment.currency if payment else None
 
     def validate_scheduled_at(self, value):
         if value <= timezone.now():

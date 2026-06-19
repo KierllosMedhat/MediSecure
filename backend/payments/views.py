@@ -94,16 +94,16 @@ class PaymentBalanceView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        # TODO (Abdullah): Aggregate PENDING payments for request.user's patient
-        # TODO (Abdullah): Return {"balance": total, "currency": "EGP", "pending_count": n}
-        if request.user.role != 'PATIENT':
-            raise PermissionDenied("Only patients have an outstanding balance.")
-        
-        patient = get_patient_from_user(request.user)
-        if not patient:
-            raise NotFound("Patient profile not found.")
+        if request.user.role == 'PATIENT':
+            patient = get_patient_from_user(request.user)
+            if not patient:
+                raise NotFound("Patient profile not found.")
+            pending_payments = Payment.objects.filter(patient=patient, status=Payment.Status.PENDING)
+        elif request.user.role in ['ADMIN', 'BILLING_STAFF']:
+            pending_payments = Payment.objects.filter(status=Payment.Status.PENDING)
+        else:
+            raise PermissionDenied("You do not have permission to view outstanding balance.")
 
-        pending_payments = Payment.objects.filter(patient=patient, status=Payment.Status.PENDING)
         total_balance = pending_payments.aggregate(total=Sum('amount'))['total'] or 0.00
         
         return Response({
@@ -275,6 +275,17 @@ class FawryWebhookView(APIView):
                 if new_status == Payment.Status.PAID:
                     payment.paid_at = timezone.now()
                 payment.save()
+                
+                from notifications.services import create_notification
+                from notifications.models import Notification
+                if new_status == Payment.Status.PAID:
+                    create_notification(
+                        user=payment.patient.user,
+                        notification_type=Notification.NotificationType.PAYMENT,
+                        subject="Payment Successful",
+                        content=f"Your payment of {payment.amount} {payment.currency} has been received successfully."
+                    )
+                
                 return Response({"message": "Webhook processed successfully"}, status=status.HTTP_200_OK)
             except Payment.DoesNotExist:
                 return Response({"error": "Payment not found"}, status=status.HTTP_404_NOT_FOUND)
@@ -309,6 +320,17 @@ class CardWebhookView(APIView):
             else:
                 payment.status = Payment.Status.FAILED
             payment.save()
+            
+            from notifications.services import create_notification
+            from notifications.models import Notification
+            if payment.status == Payment.Status.PAID:
+                create_notification(
+                    user=payment.patient.user,
+                    notification_type=Notification.NotificationType.PAYMENT,
+                    subject="Payment Successful",
+                    content=f"Your card payment of {payment.amount} {payment.currency} has been received successfully."
+                )
+                
             return Response({"message": "Card Webhook processed"}, status=status.HTTP_200_OK)
         except Payment.DoesNotExist:
             return Response({"error": "Payment not found"}, status=status.HTTP_404_NOT_FOUND)
@@ -339,8 +361,98 @@ class PaymentRefundView(APIView):
         payment.status = Payment.Status.REFUNDED
         payment.save()
 
+        from notifications.services import create_notification
+        from notifications.models import Notification
+        create_notification(
+            user=payment.patient.user,
+            notification_type=Notification.NotificationType.PAYMENT,
+            subject="Payment Refund Initiated",
+            content=f"A refund of {payment.amount} {payment.currency} has been initiated for your payment."
+        )
+
         return Response({
             "message": "Refund initiated successfully",
+            "payment_id": payment.id,
+            "status": payment.status
+        }, status=status.HTTP_200_OK)
+
+
+class GenerateAppointmentBillView(APIView):
+    """
+    POST /payments/generate-for-appointment
+    Generates a PENDING bill for an appointment.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        if request.user.role not in ['ADMIN', 'BILLING_STAFF']:
+            raise PermissionDenied("Only billing staff can generate bills.")
+
+        appointment_id = request.data.get("appointment_id")
+        amount = request.data.get("amount")
+
+        if not appointment_id or not amount:
+            return Response({"error": "appointment_id and amount are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        from appointments.models import Appointment
+        try:
+            appointment = Appointment.objects.get(pk=appointment_id)
+        except Appointment.DoesNotExist:
+            return Response({"error": "Appointment not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Create payment
+        payment = Payment.objects.create(
+            patient=appointment.patient,
+            appointment=appointment,
+            amount=amount,
+            currency=Payment.Currency.EGP,
+            payment_type=Payment.PaymentType.CONSULTATION,
+            gateway_type=Payment.GatewayType.CASH, # default to cash for manual bills
+            status=Payment.Status.PENDING,
+            description=f"Bill for appointment {appointment.id} with {appointment.staff.user.first_name or appointment.staff.user.email}"
+        )
+
+        return Response({
+            "message": "Bill generated successfully.",
+            "payment_id": payment.id,
+            "status": payment.status
+        }, status=status.HTTP_201_CREATED)
+
+
+class MarkPaymentPaidView(APIView):
+    """
+    POST /payments/<id>/mark-paid
+    Mark a pending bill as PAID (e.g. cash collected).
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        if request.user.role not in ['ADMIN', 'BILLING_STAFF']:
+            raise PermissionDenied("Only billing staff can mark bills as paid.")
+
+        try:
+            payment = Payment.objects.get(pk=pk)
+        except Payment.DoesNotExist:
+            return Response({"error": "Payment not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        if payment.status == Payment.Status.PAID:
+            return Response({"error": "Payment is already paid."}, status=status.HTTP_400_BAD_REQUEST)
+
+        payment.status = Payment.Status.PAID
+        payment.paid_at = timezone.now()
+        payment.save()
+
+        from notifications.services import create_notification
+        from notifications.models import Notification
+        create_notification(
+            user=payment.patient.user,
+            notification_type=Notification.NotificationType.PAYMENT,
+            subject="Bill Paid",
+            content=f"Your bill of {payment.amount} {payment.currency} has been marked as paid."
+        )
+
+        return Response({
+            "message": "Payment marked as paid.",
             "payment_id": payment.id,
             "status": payment.status
         }, status=status.HTTP_200_OK)

@@ -15,21 +15,14 @@
  * - Handle upload errors
  * - Navigate back on success
  */
-import { Card, Button, Input } from '../../../components/ui';
-
 import './RecordPages.css';
-import { useState,useRef,useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useFormik,Formik, Form, Field, ErrorMessage } from 'formik';
+import { useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { useFormik } from 'formik';
 import DragAndDropFileUpload from '../components/DragAndDropFileUpload';
 import DocumentSection from '../components/DocumentSection';
 import * as Yup from 'yup';
-import { mergeConfig } from 'axios';
-export default function UploadRecord() {
-  //const { id: patientId} = useParams();
-  //const patientId = 1;
-  // user data retreival
-const [patientId,setPatientId] = useState(null);
+import recordsApi from '../../../api/services/recordsService';
 
 function getUserIdFromStorage() {
   try {
@@ -38,34 +31,30 @@ function getUserIdFromStorage() {
 
     const user = JSON.parse(raw);
     return user?.id ?? user?.User_Id ?? user?.ID ?? null; // supports either naming
-
-    //return 1; // dummy for now
   } catch {
     return null;
   }
 }
-useEffect(()=>{
-const currentUserID = getUserIdFromStorage();
 
-if(currentUserID){
-  setPatientId(currentUserID);
-  return;
-}
-else{
-  setPatientId(1); // dummyid
-}
-return
-},[])
-
-
+export default function UploadRecord() {
+  const { id: patientIdParam } = useParams();
+  const currentUserID = getUserIdFromStorage();
+  
+  // Resolve patientId: if URL has an ID use it. Otherwise 'me'.
+  const resolvedPatientId = patientIdParam || 'me';
+    
+  const [patientId] = useState(resolvedPatientId);
   const navigate = useNavigate();
 const [returnedRecordId,setReturnedRecordId] = useState(null);
   const RECORD_TYPES = [
     { value: '', label: 'Select type…' },
-    { value: 'lab', label: 'Lab results' },
+    { value: 'lab_result', label: 'Lab results' },
     { value: 'imaging', label: 'Imaging' },
     { value: 'prescription', label: 'Prescription' },
-    { value: 'visit', label: 'Visit summary' },
+    { value: 'consultation', label: 'Consultation' },
+    { value: 'diagnosis', label: 'Diagnosis' },
+    { value: 'discharge_summary', label: 'Discharge Summary' },
+    { value: 'other', label: 'Other' },
   ];
 
 
@@ -101,65 +90,67 @@ const [returnedRecordId,setReturnedRecordId] = useState(null);
       record_type: "",
       files:[],
     },
-    onSubmit: (values, { setSubmitting }) => {
-
-if(!values.files.length){
-  setSubmitting(false);
-  alert("Add files to create record");
-}
-
-
-      dummySubmit(values);
-      setSubmitting(false);
+    onSubmit: async (values, { setSubmitting }) => {
+      if(!values.files.length){
+        setSubmitting(false);
+        alert("Add files to create record");
+        return;
+      }
+      try {
+        await formSubmit(values);
+      } catch (error) {
+        console.error("Submission failed", error);
+      } finally {
+        setSubmitting(false);
+      }
     },
     validationSchema:recordValidationSchema,
   });
 
-  const dummySubmit = (values)=>{
-    alert(`new record created successfully`);
-    navigate(`/patients/me/records`);
-    return;
-  }
-
   const formSubmit = async (values) => {
-    const { data } = await recordsApi.createRecord({
-      patient_id: patientId, 
-      record_type: values.record_type,
-      title: values.title,
-      description: values.description,
-    });
-    setReturnedRecordId(data.recordId);
+    try {
+      const payload = {
+        record_type: values.record_type.toUpperCase(),
+        title: values.title,
+        description: values.description,
+      };
+      
+      if (patientId !== 'me') {
+        payload.patient = patientId;
+      }
+      
+      const { data } = await recordsApi.createRecord(payload);
+      
+      const newRecordId = data.id || data.record_id || data.recordId;
 
-    if(returnedRecordId){
-     try{
-for (const rawfile of rawfiles){
-  //await recordsApi.uploadDocument(returnedRecordId,rawfile);
-}
-await new Promise((resolve) => setTimeout(resolve, 800)); // demo delay
-alert(`Upload success: ${files.length} files have been uploaded to record ${returnedRecordId }`);
-
-     }catch (error) {
+      if(newRecordId){
+        setReturnedRecordId(newRecordId);
+        try{
+          for (const rawfile of rawfiles){
+            await recordsApi.uploadDocument(newRecordId, rawfile);
+          }
+          alert(`Upload success: ${values.files.length} files have been uploaded to record ${newRecordId}`);
+          navigate(`/patients/${patientId}/records`);
+        }catch (error) {
+          console.error(error);
+          alert("Document upload failed.");
+        } finally {
+          formik.setFieldValue('files', []);
+        }
+      } else {
+        alert("could not create record");
+      }
+    } catch (error) {
       console.error(error);
-      alert("Upload failed.");
-      
-    } finally {
-      
-      formik.setFieldValue('files', []);
-      
-    }
-
-
-    }else {
-      alert("could not create record");
-      return;
-    }
-    return data; 
+      const msg = error.response ? JSON.stringify(error.response.data) : error.message;
+      alert("Failed to create the record: " + msg);
+    } finally { };
   };
 
 // uploading document handling
 
 const [documents,setDocuments] = useState([]); 
-const [docError,setDocError] = useState(null);
+const docError = null;
 const [nextDocID,setNextDocID] = useState(9104);
 const [rawfiles,SetRawFiles] = useState([]);
 
@@ -193,7 +184,7 @@ const handleUpload = async () => {
   }
  
     const formData = new FormData();
-    formData.append("file", file);
+    formData.append("file_path", file);
 
     SetRawFiles([...rawfiles,formData]);
 

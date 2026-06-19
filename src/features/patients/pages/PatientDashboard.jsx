@@ -12,7 +12,7 @@
  *     Left: Medical Records, Pending Bills, Privacy & Consent
  *     Right: Profile card, Recent Activity
  */
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../auth/hooks/useAuth';
 import usePatientDashboard from '../hooks/usePatientDashboard';
@@ -145,7 +145,13 @@ export default function PatientDashboard() {
   const navigate = useNavigate();
   const { dashboardData, profile, loading } = usePatientDashboard();
 
-  const [consentEnabled, setConsentEnabled] = useState(true);
+  const [consentEnabled, setConsentEnabled] = useState(false);
+
+  useEffect(() => {
+    if (dashboardData?.consent) {
+      setConsentEnabled(dashboardData.consent.grant_data_access);
+    }
+  }, [dashboardData]);
 
   const handleConsentToggle = useCallback(() => {
     setConsentEnabled((prev) => !prev);
@@ -184,7 +190,7 @@ export default function PatientDashboard() {
         <StatCard
           label="Total Records"
           value={stats.total_records ?? 0}
-          subtitle={`+4 this month`}
+          subtitle={stats.records_this_month ? `+${stats.records_this_month} this month` : null}
           subtitleColor="var(--color-success)"
         />
         <StatCard
@@ -231,9 +237,13 @@ export default function PatientDashboard() {
               </button>
             </div>
             <div className="dashboard-card__body">
-              {records.map((rec) => (
-                <RecordItem key={rec.id} record={rec} />
-              ))}
+              {records.length === 0 ? (
+                <p className="dashboard-card__empty" style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: 'var(--space-4) 0' }}>No medical records yet.</p>
+              ) : (
+                records.map((rec) => (
+                  <RecordItem key={rec.id} record={rec} />
+                ))
+              )}
             </div>
             <button
               className="dashboard-card__view-all"
@@ -260,9 +270,13 @@ export default function PatientDashboard() {
               </button>
             </div>
             <div className="dashboard-card__body">
-              {bills.map((bill) => (
-                <BillItem key={bill.id} bill={bill} />
-              ))}
+              {bills.length === 0 ? (
+                <p className="dashboard-card__empty" style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: 'var(--space-4) 0' }}>No pending bills.</p>
+              ) : (
+                bills.map((bill) => (
+                  <BillItem key={bill.id} bill={bill} />
+                ))
+              )}
             </div>
           </section>
 
@@ -343,7 +357,7 @@ export default function PatientDashboard() {
 
               <button
                 className="btn-outline btn-block"
-                onClick={() => navigate('/patients/profile')}
+                onClick={() => navigate('/profile')}
                 id="dashboard-edit-profile-btn"
               >
                 <IoPersonOutline /> Edit Profile
@@ -360,9 +374,13 @@ export default function PatientDashboard() {
               </div>
             </div>
             <div className="dashboard-card__body activity-list">
-              {activity.map((item) => (
-                <ActivityItem key={item.id} activity={item} />
-              ))}
+              {activity.length === 0 ? (
+                <p className="dashboard-card__empty" style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: 'var(--space-4) 0' }}>No recent activity.</p>
+              ) : (
+                activity.map((item) => (
+                  <ActivityItem key={item.id} activity={item} />
+                ))
+              )}
             </div>
           </section>
         </div>

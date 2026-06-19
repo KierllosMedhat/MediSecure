@@ -17,7 +17,7 @@ from django.conf.urls.static import static
 from records.views import MedicalRecordListCreateView, MedicalRecordDetailView
 
 # Patient-scoped consent views (owned by Abdullah)
-from consent.views import ConsentListGrantView, ConsentRevokeView
+from consent.views import ConsentListGrantView, ConsentRevokeView, ConsentApproveView, ConsentDenyView
 # Document download (owned by Fadi) — lives under /documents/<id>/download
 from records.views import DocumentDownloadView
 from patients.views import PatientListView
@@ -26,6 +26,7 @@ from staff.views import StaffListCreateView
 from appointments.views import AppointmentListCreateView
 from notifications.views import NotificationListView
 from audit.views import AuditLogListView
+from payments.views import PaymentListView
 
 urlpatterns = [
     # Django Admin
@@ -37,12 +38,14 @@ urlpatterns = [
     path("api/v1/patients/", include("patients.urls")),
 
     # ── Fadi ─────────────────────────────────────────────
+    path("api/v1/records", MedicalRecordListCreateView.as_view(), name="record-create-no-slash"),
     path("api/v1/records/", include("records.urls")),
     path("api/v1/hospitals", HospitalListCreateView.as_view(), name="hospital-list-no-slash"),
     path("api/v1/hospitals/", include("hospitals.urls")),
 
     # ── Abdullah ─────────────────────────────────────────
     path("api/v1/consents/", include("consent.urls")),
+    path("api/v1/payments", PaymentListView.as_view(), name="payment-list-no-slash"),
     path("api/v1/payments/", include("payments.urls")),
 
     # ── Kyrillos ─────────────────────────────────────────
@@ -59,12 +62,12 @@ urlpatterns = [
     # Records under a patient — frontend: GET /patients/<id>/records
     # (Fadi's views, mounted under patients/ prefix)
     path(
-        "api/v1/patients/<int:patient_id>/records",
+        "api/v1/patients/<str:patient_id>/records",
         MedicalRecordListCreateView.as_view(),
         name="patient-records-list",
     ),
     path(
-        "api/v1/patients/<int:patient_id>/records/<int:pk>",
+        "api/v1/patients/<str:patient_id>/records/<int:pk>",
         MedicalRecordDetailView.as_view(),
         name="patient-record-detail",
     ),
@@ -83,6 +86,16 @@ urlpatterns = [
         "api/v1/patients/<str:patient_id>/consents/<int:pk>",
         ConsentRevokeView.as_view(),
         name="patient-consent-revoke",
+    ),
+    path(
+        "api/v1/patients/<str:patient_id>/consents/<int:pk>/approve",
+        ConsentApproveView.as_view(),
+        name="patient-consent-approve",
+    ),
+    path(
+        "api/v1/patients/<str:patient_id>/consents/<int:pk>/deny",
+        ConsentDenyView.as_view(),
+        name="patient-consent-deny",
     ),
    
     # Document download — frontend: GET /documents/<id>/download

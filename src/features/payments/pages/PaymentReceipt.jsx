@@ -12,24 +12,11 @@
  * - Print button (window.print())
  * - Back link to /payments
  */
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, Button } from '../../../components/ui';
 import './PaymentPages.css';
-
-// fake API response for testing
-const mockPaymentApi = {
-  getReceipt: async (id) => ({
-    Payment_Id: id || 'PAY-101',
-    Amount: 150.00,
-    Currency: 'EGP',
-    Payment_Type: 'CONSULTATION',
-    Gateway_Type: 'INTERNATIONAL (Visa/Mastercard)',
-    Status: 'COMPLETED',
-    Paid_at: '2026-04-10 14:30',
-    Receipt_URL: `https://medisecure.com/receipts/${id || 'PAY-101'}.pdf`
-  })
-};
+import paymentApi from '../../../api/services/paymentService';
 
 export default function PaymentReceipt() {
   const { paymentId } = useParams();
@@ -41,9 +28,8 @@ export default function PaymentReceipt() {
     const fetchReceipt = async () => {
       setIsLoading(true);
       try {
-        // TODO: Replace with actual paymentApi.getReceipt(paymentId)
-        const data = await mockPaymentApi.getReceipt(paymentId);
-        setReceipt(data);
+        const response = await paymentApi.getReceipt(paymentId);
+        setReceipt(response.data);
       } catch (error) {
         console.error("Failed to load receipt", error);
       } finally {
@@ -81,29 +67,29 @@ export default function PaymentReceipt() {
         <div className="receipt-details">
           <div className="receipt-row">
             <span>Payment ID:</span>
-            <strong>{receipt.Payment_Id}</strong>
+            <strong>{receipt.id}</strong>
           </div>
           <div className="receipt-row">
             <span>Date Paid:</span>
-            <strong>{receipt.Paid_at}</strong>
+            <strong>{receipt.paid_at ? new Date(receipt.paid_at).toLocaleString() : 'N/A'}</strong>
           </div>
           <div className="receipt-row">
             <span>Payment Type:</span>
-            <strong>{receipt.Payment_Type}</strong>
+            <strong>{receipt.payment_type}</strong>
           </div>
           <div className="receipt-row">
             <span>Gateway:</span>
-            <strong>{receipt.Gateway_Type}</strong>
+            <strong>{receipt.gateway_type}</strong>
           </div>
           <div className="receipt-row">
             <span>Status:</span>
-            <strong style={{ color: '#28a745' }}>{receipt.Status}</strong>
+            <strong style={{ color: '#28a745' }}>{receipt.status}</strong>
           </div>
           
           <div className="receipt-row total">
             <span>Amount Paid:</span>
             <span style={{ color: '#0056b3' }}>
-              {receipt.Amount.toFixed(2)} {receipt.Currency}
+              {Number(receipt.amount).toFixed(2)} {receipt.currency}
             </span>
           </div>
         </div>
@@ -113,13 +99,15 @@ export default function PaymentReceipt() {
           <Button variant="primary" onClick={() => window.print()} style={{ width: '100%' }}>
             Print Receipt
           </Button>
-          <Button 
-            variant="secondary" 
-            onClick={() => window.open(receipt.Receipt_URL, '_blank')} 
-            style={{ width: '100%' }}
-          >
-            Download Digital Copy
-          </Button>
+          {receipt.receipt_url && (
+            <Button 
+              variant="secondary" 
+              onClick={() => window.open(receipt.receipt_url, '_blank')} 
+              style={{ width: '100%' }}
+            >
+              Download Digital Copy
+            </Button>
+          )}
         </div>
       </Card>
       

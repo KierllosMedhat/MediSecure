@@ -122,9 +122,11 @@ export default function PatientProfile() {
               </button>
             </>
           ) : (
-            <button className="btn-outline" onClick={toggleEdit} id="profile-edit-btn">
-              <IoCreateOutline /> Edit Profile
-            </button>
+            displayData?.role === 'PATIENT' || !displayData?.role ? (
+              <button className="btn-outline" onClick={toggleEdit} id="profile-edit-btn">
+                <IoCreateOutline /> Edit Profile
+              </button>
+            ) : null
           )}
         </div>
       </div>

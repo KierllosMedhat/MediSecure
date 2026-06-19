@@ -105,10 +105,14 @@ def main():
     # It might create a dummy password or require one. Let's see if it works.
 
     # 6. Create Appointment
+    # Use a dynamic future date to satisfy validation rules
+    from datetime import datetime, timedelta, timezone
+    future_date = (datetime.now(timezone.utc) + timedelta(days=5)).strftime("%Y-%m-%dT%H:%M:%SZ")
+
     appt_data = {
         "patient": patient_id,
         "staff": staff_id,
-        "scheduled_at": "2026-06-05T10:00:00Z",
+        "scheduled_at": future_date,
         "duration_min": 30,
         "appointment_type": "IN_PERSON"
     }

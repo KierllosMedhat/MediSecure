@@ -16,103 +16,103 @@
  * - Handle 403 → show "Access Denied / Consent Required" message
  * - Back button to records list
  */
-import { useParams, useNavigate,useLocation } from 'react-router-dom';
-import { Card, Button, StatusBadge, DataTable } from '../../../components/ui';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Button, StatusBadge, DataTable } from '../../../components/ui';
 import './RecordPages.css';
 import recordsApi from '../../../api/services/recordsService';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import DragAndDropFileUpload from '../components/DragAndDropFileUpload';
 import DocumentSection from '../components/DocumentSection';
+
+// dummy data for testing
+const DUMMY_RECORD_101 = {
+  record_id: 101,
+  patient_id: 1,
+  title: "Blood Test Report - April 2026",
+  record_type: "LAB_RESULT",
+  created_by: "Dr. Sara Ahmed",
+  created_at: "2026-05-01T10:30:00Z",
+  description: "CBC + differential. All values within expected range.",
+};
+
+const DUMMY_RECORD_102 = {
+  record_id: 102,
+  patient_id: 1,
+  title: "Chest X-Ray - Follow Up",
+  record_type: "IMAGING",
+  created_by: "Dr. Omar Hassan",
+  created_at: "2026-05-03T14:10:00Z",
+  description:
+    "Chest X-ray follow-up after persistent cough. Mild perihilar markings, no focal consolidation, no pleural effusion. Clinical correlation advised.",
+};
+
+const DUMMY_DOCUMENTS_FOR_RECORD_101 = [
+  {
+    document_id: 9001,
+    record_id: 101,
+    file_name: "cbc_april_2026.pdf",
+    file_path: "/uploads/records/101/cbc_april_2026.pdf",
+    file_type: "application/pdf",
+    file_size: 234567,
+    uploaded_by: 1,
+    created_at: "2026-05-01T10:35:00Z",
+  },
+  {
+    document_id: 9002,
+    record_id: 101,
+    file_name: "lab_summary_notes.txt",
+    file_path: "/uploads/records/101/lab_summary_notes.txt",
+    file_type: "text/plain",
+    file_size: 4821,
+    uploaded_by: 1,
+    created_at: "2026-05-01T10:40:00Z",
+  },
+];
+
+const DUMMY_DOCUMENTS_FOR_RECORD_102 = [
+  {
+    document_id: 9101,
+    record_id: 102,
+    file_name: "chest_xray_ap_2026_05_03.png",
+    file_path: "/uploads/records/102/chest_xray_ap_2026_05_03.png",
+    file_type: "image/png",
+    file_size: 1845220,
+    uploaded_by: 1,
+    created_at: "2026-05-03T14:20:00Z",
+  },
+  {
+    document_id: 9102,
+    record_id: 102,
+    file_name: "radiology_report_2026_05_03.pdf",
+    file_path: "/uploads/records/102/radiology_report_2026_05_03.pdf",
+    file_type: "application/pdf",
+    file_size: 348912,
+    uploaded_by: 1,
+    created_at: "2026-05-03T14:28:00Z",
+  },
+  {
+    document_id: 9103,
+    record_id: 102,
+    file_name: "followup_instructions.txt",
+    file_path: "/uploads/records/102/followup_instructions.txt",
+    file_type: "text/plain",
+    file_size: 5294,
+    uploaded_by: 1,
+    created_at: "2026-05-03T14:31:00Z",
+  },
+];
+
 export default function RecordDetail() {
-  //const { id: patientId, recordId } = useParams();
-  const location = useLocation();
-const {patientId,recordId} = location.state;
+  const { id: patientId, recordId } = useParams();
   const navigate = useNavigate();
 
-  // dummy data for testing
-  const DUMMY_RECORD_101 = {
-    record_id: 101,
-    patient_id: 1,
-    title: "Blood Test Report - April 2026",
-    record_type: "LAB_RESULT",
-    created_by: "Dr. Sara Ahmed",
-    created_at: "2026-05-01T10:30:00Z",
-    description: "CBC + differential. All values within expected range.",
-  };
 
-  const DUMMY_RECORD_102 = {
-    record_id: 102,
-    patient_id: 1,
-    title: "Chest X-Ray - Follow Up",
-    record_type: "IMAGING",
-    created_by: "Dr. Omar Hassan",
-    created_at: "2026-05-03T14:10:00Z",
-    description:
-      "Chest X-ray follow-up after persistent cough. Mild perihilar markings, no focal consolidation, no pleural effusion. Clinical correlation advised.",
-  };
-
-  const DUMMY_DOCUMENTS_FOR_RECORD_101 = [
-    {
-      document_id: 9001,
-      record_id: 101,
-      file_name: "cbc_april_2026.pdf",
-      file_path: "/uploads/records/101/cbc_april_2026.pdf",
-      file_type: "application/pdf",
-      file_size: 234567,
-      uploaded_by: 1,
-      created_at: "2026-05-01T10:35:00Z",
-    },
-    {
-      document_id: 9002,
-      record_id: 101,
-      file_name: "lab_summary_notes.txt",
-      file_path: "/uploads/records/101/lab_summary_notes.txt",
-      file_type: "text/plain",
-      file_size: 4821,
-      uploaded_by: 1,
-      created_at: "2026-05-01T10:40:00Z",
-    },
-  ];
-
-
-  const DUMMY_DOCUMENTS_FOR_RECORD_102 = [
-    {
-      document_id: 9101,
-      record_id: 102,
-      file_name: "chest_xray_ap_2026_05_03.png",
-      file_path: "/uploads/records/102/chest_xray_ap_2026_05_03.png",
-      file_type: "image/png",
-      file_size: 1845220,
-      uploaded_by: 1,
-      created_at: "2026-05-03T14:20:00Z",
-    },
-    {
-      document_id: 9102,
-      record_id: 102,
-      file_name: "radiology_report_2026_05_03.pdf",
-      file_path: "/uploads/records/102/radiology_report_2026_05_03.pdf",
-      file_type: "application/pdf",
-      file_size: 348912,
-      uploaded_by: 1,
-      created_at: "2026-05-03T14:28:00Z",
-    },
-    {
-      document_id: 9103,
-      record_id: 102,
-      file_name: "followup_instructions.txt",
-      file_path: "/uploads/records/102/followup_instructions.txt",
-      file_type: "text/plain",
-      file_size: 5294,
-      uploaded_by: 1,
-      created_at: "2026-05-03T14:31:00Z",
-    },
-  ];
 
   const [record, setRecord] = useState(null);
   const [recError, setRecError] = useState(null);
   const [documents, setDocuments] = useState([]);
   const [docError, setDocError] = useState(null);
-  const [emptyMessage, setEmptyMessage] = useState("Something went wrong");
+  const emptyMessage = "Something went wrong";
 
   // drag and drop states
   const [file, setFile] = useState(null);
@@ -166,38 +166,39 @@ const {patientId,recordId} = location.state;
 
   }
 
-  const fetchRecord = async () => {
-    const response = await recordsApi.getRecordById(patientId, recordId);
-    setRecord(response.data);
-  }
-  useEffect(() => {
+  const fetchRecord = useCallback(async () => {
+    try {
+      const response = await recordsApi.getRecordById(patientId, recordId);
+      setRecord(response.data);
+    } catch (error) {
+      setRecError(error);
+    }
+  }, [patientId, recordId]);
 
+  useEffect(() => {
     if (Number(recordId) === 101) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setRecord(DUMMY_RECORD_101);
       return;
     } else if (Number(recordId) === 102) {
       setRecord(DUMMY_RECORD_102);
       return;
     }
+    fetchRecord();
+  }, [recordId, fetchRecord]);
 
-    const run = async () => {
-      try {
-        await fetchRecord();
-      } catch (error) {
-        setRecError(error);
-      }
+  const fetchDocuments = useCallback(async () => {
+    try {
+      const response = await recordsApi.getDocumentsByRecord(recordId);
+      setDocuments(response.data.results || response.data);
+    } catch (error) {
+      setDocError(error);
     }
-    //run();
-  }, []);
-
-  const fetchDocuments = async () => {
-    const documents = await recordsApi.getDocumentsByRecord(recordId);
-    setDocuments(documents.data)
-  }
+  }, [recordId]);
 
   useEffect(() => {
-
     if (Number(recordId) === 101) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDocuments(DUMMY_DOCUMENTS_FOR_RECORD_101);
       return;
     } else if (Number(recordId) === 102) {
@@ -205,15 +206,10 @@ const {patientId,recordId} = location.state;
       return;
     }
 
-    const run = async () => {
-      try {
-        await fetchDocuments();
-      } catch (error) {
-        setDocError(error);
-      }
+    if (record) {
+      fetchDocuments();
     }
-    //if(record) run();
-  }, [record])
+  }, [record, recordId, fetchDocuments]);
 
 
 
@@ -287,8 +283,10 @@ const {patientId,recordId} = location.state;
   }
   return (
     <div className="records-page">
-      {/* TODO: Back link */}
-      <Button onClick={() => navigate('/patients/me/records')}>Back</Button>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+        <Button onClick={() => navigate(`/patients/${patientId || 'me'}/records`)}>Back</Button>
+        <Button onClick={() => navigate(`/patients/${patientId || 'me'}/records/${recordId}/edit`)}>Edit Record</Button>
+      </div>
 
       {/* TODO: MedicalRecord header (Title, Created_by, created_at, Record_type badge) */}
       {/* <Card className="record-header">

@@ -13,18 +13,6 @@ import auditApi from '../../../api/services/auditService';
 import { IoSearchOutline } from 'react-icons/io5';
 import './AuditPages.css';
 
-/* ---------- Dummy audit data ---------- */
-const DUMMY_LOGS = [
-  { id: 1, timestamp: '2026-05-16T17:02:00Z', user: 'admin@medisecure.com', action: 'LOGIN', entity_type: 'User', entity_id: '1', details: 'Successful login from web', ip_address: '197.38.12.45' },
-  { id: 2, timestamp: '2026-05-16T16:45:00Z', user: 'dr.sara@medisecure.com', action: 'VIEW', entity_type: 'MedicalRecord', entity_id: '101', details: 'Viewed blood test results', ip_address: '197.38.12.50' },
-  { id: 3, timestamp: '2026-05-16T15:30:00Z', user: 'admin@medisecure.com', action: 'CREATE', entity_type: 'Staff', entity_id: '7', details: 'Created new staff account', ip_address: '197.38.12.45' },
-  { id: 4, timestamp: '2026-05-16T14:10:00Z', user: 'dr.omar@medisecure.com', action: 'UPDATE', entity_type: 'Appointment', entity_id: '3', details: 'Status changed to IN_PROGRESS', ip_address: '10.0.1.22' },
-  { id: 5, timestamp: '2026-05-16T12:00:00Z', user: 'billing@medisecure.com', action: 'CREATE', entity_type: 'Payment', entity_id: '45', details: 'Payment of $150 processed via Fawry', ip_address: '10.0.1.15' },
-  { id: 6, timestamp: '2026-05-15T22:15:00Z', user: 'patient1@email.com', action: 'REVOKE', entity_type: 'Consent', entity_id: '12', details: 'Patient revoked data access', ip_address: '41.33.100.8' },
-  { id: 7, timestamp: '2026-05-15T18:00:00Z', user: 'dr.sara@medisecure.com', action: 'UPLOAD', entity_type: 'Document', entity_id: '201', details: 'Uploaded MRI scan report', ip_address: '197.38.12.50' },
-  { id: 8, timestamp: '2026-05-15T10:30:00Z', user: 'admin@medisecure.com', action: 'DEACTIVATE', entity_type: 'Staff', entity_id: '5', details: 'Deactivated staff member', ip_address: '197.38.12.45' },
-];
-
 const ENTITY_TYPES = ['All', 'User', 'Staff', 'MedicalRecord', 'Document', 'Consent', 'Payment', 'Appointment', 'Notification'];
 const ACTIONS = ['All', 'LOGIN', 'LOGOUT', 'VIEW', 'CREATE', 'UPDATE', 'DELETE', 'UPLOAD', 'DOWNLOAD', 'REVOKE', 'DEACTIVATE'];
 
@@ -34,8 +22,8 @@ function fmtTs(ts) {
 }
 
 export default function AuditLogsPage() {
-  const [logs, setLogs] = useState(DUMMY_LOGS);
-  const [filtered, setFiltered] = useState(DUMMY_LOGS);
+  const [logs, setLogs] = useState([]);
+  const [filtered, setFiltered] = useState([]);
 
   /* Filter state */
   const [userFilter, setUserFilter] = useState('');
@@ -46,18 +34,17 @@ export default function AuditLogsPage() {
 
   /* Fetch from API */
   useEffect(() => {
-    const fetch = async () => {
+    const fetchLogs = async () => {
       try {
         const res = await auditApi.getAuditLogs();
-        const data = res.data.results || res.data;
+        const data = res.data.results || res.data || [];
         setLogs(data);
         setFiltered(data);
-      } catch {
-        setLogs(DUMMY_LOGS);
-        setFiltered(DUMMY_LOGS);
+      } catch (err) {
+        console.error("Failed to fetch audit logs:", err);
       }
     };
-    fetch();
+    fetchLogs();
   }, []);
 
   const applyFilters = () => {

@@ -54,7 +54,6 @@ const FEATURES = [
 /* ---- Inline Auth Section ---- */
 function InlineAuthSection() {
   const [activeTab, setActiveTab] = useState('login');
-  const navigate = useNavigate();
 
   return (
     <section className="landing-auth" id="auth-section">
@@ -142,7 +141,7 @@ export default function LandingPage() {
       <nav className="landing-nav">
         <div className="landing-nav__inner">
           <Link to="/" className="landing-nav__brand">
-            <IoShieldCheckmark className="landing-nav__icon" />
+            <img src="/favicon.png" alt="MediSecure Logo" className="landing-nav__logo" />
             <span>MediSecure</span>
           </Link>
           <div className="landing-nav__links">
@@ -224,7 +223,7 @@ export default function LandingPage() {
         <div className="landing-footer__inner">
           <div className="landing-footer__col">
             <div className="landing-footer__brand">
-              <IoShieldCheckmark />
+              <img src="/favicon.png" alt="MediSecure Logo" className="landing-footer__logo" />
               <span>MediSecure</span>
             </div>
             <p className="landing-footer__tagline">Cloud-Native Patient Empowerment Portal</p>

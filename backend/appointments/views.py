@@ -76,12 +76,30 @@ class AppointmentListCreateView(generics.ListCreateAPIView):
         user = self.request.user
         # If the requester is a patient, auto-set patient from their profile
         if user.role == "PATIENT":
-            serializer.save(
+            appointment = serializer.save(
                 patient=user.patient_profile,
                 status=Appointment.Status.SCHEDULED,
             )
         else:
-            serializer.save(status=Appointment.Status.SCHEDULED)
+            appointment = serializer.save(status=Appointment.Status.SCHEDULED)
+
+        from notifications.services import create_notification
+        from notifications.models import Notification
+        
+        date_str = appointment.scheduled_at.strftime('%Y-%m-%d %H:%M') if appointment.scheduled_at else "TBD"
+        
+        create_notification(
+            user=appointment.patient.user,
+            notification_type=Notification.NotificationType.APPOINTMENT,
+            subject="New Appointment Scheduled",
+            content=f"An appointment has been scheduled for {date_str}."
+        )
+        create_notification(
+            user=appointment.staff.user,
+            notification_type=Notification.NotificationType.APPOINTMENT,
+            subject="New Appointment Scheduled",
+            content=f"You have a new appointment scheduled for {date_str}."
+        )
 
 
 class AppointmentDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -110,6 +128,30 @@ class AppointmentDetailView(generics.RetrieveUpdateDestroyAPIView):
                 return Appointment.objects.none()
         return qs
 
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        if self.request.data.get("status") == "CANCELLED":
+            if instance.status not in ("COMPLETED", "CANCELLED", "NO_SHOW"):
+                instance.status = Appointment.Status.CANCELLED
+                instance.save(update_fields=["status", "updated_at"])
+                
+                from notifications.services import create_notification
+                from notifications.models import Notification
+                date_str = instance.scheduled_at.strftime('%Y-%m-%d %H:%M') if instance.scheduled_at else "TBD"
+                
+                create_notification(
+                    user=instance.patient.user,
+                    notification_type=Notification.NotificationType.APPOINTMENT,
+                    subject="Appointment Cancelled",
+                    content=f"Your appointment on {date_str} has been cancelled."
+                )
+                create_notification(
+                    user=instance.staff.user,
+                    notification_type=Notification.NotificationType.APPOINTMENT,
+                    subject="Appointment Cancelled",
+                    content=f"Appointment on {date_str} has been cancelled."
+                )
+
     def perform_destroy(self, instance):
         # Soft-cancel instead of hard delete
         if instance.status in (
@@ -122,6 +164,23 @@ class AppointmentDetailView(generics.RetrieveUpdateDestroyAPIView):
             )
         instance.status = Appointment.Status.CANCELLED
         instance.save(update_fields=["status", "updated_at"])
+        
+        from notifications.services import create_notification
+        from notifications.models import Notification
+        date_str = instance.scheduled_at.strftime('%Y-%m-%d %H:%M') if instance.scheduled_at else "TBD"
+        
+        create_notification(
+            user=instance.patient.user,
+            notification_type=Notification.NotificationType.APPOINTMENT,
+            subject="Appointment Cancelled",
+            content=f"Your appointment on {date_str} has been cancelled."
+        )
+        create_notification(
+            user=instance.staff.user,
+            notification_type=Notification.NotificationType.APPOINTMENT,
+            subject="Appointment Cancelled",
+            content=f"Appointment on {date_str} has been cancelled."
+        )
 
 
 class AppointmentStatusView(APIView):
@@ -159,6 +218,23 @@ class AppointmentStatusView(APIView):
             update_fields.append("cancelled_reason")
 
         appointment.save(update_fields=update_fields)
+
+        from notifications.services import create_notification
+        from notifications.models import Notification
+        date_str = appointment.scheduled_at.strftime('%Y-%m-%d %H:%M') if appointment.scheduled_at else "TBD"
+        
+        create_notification(
+            user=appointment.patient.user,
+            notification_type=Notification.NotificationType.APPOINTMENT,
+            subject=f"Appointment Status Updated: {new_status}",
+            content=f"Your appointment on {date_str} is now {new_status}."
+        )
+        create_notification(
+            user=appointment.staff.user,
+            notification_type=Notification.NotificationType.APPOINTMENT,
+            subject=f"Appointment Status Updated: {new_status}",
+            content=f"Appointment on {date_str} is now {new_status}."
+        )
 
         return Response(
             AppointmentSerializer(appointment, context={"request": request}).data,

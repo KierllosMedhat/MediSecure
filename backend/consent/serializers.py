@@ -10,13 +10,7 @@ from django.utils import timezone
 
 
 # ──────────────────────────────────────────────────────
-# TODO (Abdullah): Implement ConsentSerializer
-#   - Fields: id, patient, staff, staff_name, purpose,
-#             description, is_active, granted_at, revoked_at, expires_at
-#   - Read-only: id, granted_at, revoked_at
-#   - Include staff_name as computed field
-#   - Validate that patient cannot grant consent to themselves
-#   - Validate expires_at is in the future
+# ConsentSerializer
 # ──────────────────────────────────────────────────────
 class ConsentSerializer(serializers.ModelSerializer):
     staff_name = serializers.SerializerMethodField()
@@ -26,10 +20,10 @@ class ConsentSerializer(serializers.ModelSerializer):
         model = Consent
         fields = [
             "id", "patient", "patient_name", "staff", "staff_name",
-            "purpose", "description", "is_active",
+            "purpose", "description", "status",
             "granted_at", "revoked_at", "expires_at",
         ]
-        read_only_fields = ["id", "granted_at", "revoked_at", "is_active"]
+        read_only_fields = ["id", "granted_at", "revoked_at", "status"]
 
     def get_staff_name(self, obj):
         try:
@@ -61,14 +55,14 @@ class ConsentSerializer(serializers.ModelSerializer):
                     "PDPL Violation: Patients cannot grant consent to themselves."
                 )
 
-        # Check for duplicate active consent (same patient+staff+purpose)
+        # Check for duplicate granted consent (same patient+staff+purpose)
         purpose = attrs.get('purpose') or (self.instance.purpose if self.instance else None)
         if patient and staff and purpose:
             qs = Consent.objects.filter(
                 patient=patient,
                 staff=staff,
                 purpose=purpose,
-                is_active=True
+                status=Consent.Status.GRANTED
             )
             # Exclude current instance if updating
             if self.instance:
@@ -76,18 +70,14 @@ class ConsentSerializer(serializers.ModelSerializer):
             
             if qs.exists():
                 raise serializers.ValidationError(
-                    "An active consent for this staff member and purpose already exists."
+                    "A granted consent for this staff member and purpose already exists."
                 )
 
         return attrs
 
 
 # ──────────────────────────────────────────────────────
-# TODO (Abdullah): Implement ConsentGrantSerializer
-#   - Fields: staff, purpose, description, expires_at
-#   - Used for POST /consents/ (granting new consent)
-#   - Auto-set patient from URL param or request.user
-#   - Validate staff exists and is active
+# ConsentGrantSerializer
 # ──────────────────────────────────────────────────────
 class ConsentGrantSerializer(serializers.ModelSerializer):
     class Meta:
@@ -96,8 +86,6 @@ class ConsentGrantSerializer(serializers.ModelSerializer):
 
     def validate_staff(self, value):
         # Validate staff exists and is active
-        if hasattr(value, 'is_active') and not value.is_active:
-            raise serializers.ValidationError("The selected staff member is inactive.")
         if hasattr(value, 'user') and not value.user.is_active:
             raise serializers.ValidationError("The user account for this staff member is inactive.")
         return value
@@ -117,37 +105,39 @@ class ConsentGrantSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Patient context is missing. Cannot grant consent.")
 
         validated_data['patient'] = patient
-        
-        # --- التعديل هنا: إجبار الحالة على True عند الإنشاء ---
-        validated_data['is_active'] = True 
+        validated_data['status'] = Consent.Status.GRANTED 
 
-        # Duplicate active consent check for safety
+        # Validate that patient cannot grant consent to themselves
+        staff = validated_data.get('staff')
+        if hasattr(patient, 'user') and hasattr(staff, 'user') and patient.user == staff.user:
+            raise serializers.ValidationError(
+                "PDPL Violation: Patients cannot grant consent to themselves."
+            )
+
+        # Duplicate granted consent check for safety
         if Consent.objects.filter(
             patient=patient,
             staff=validated_data['staff'],
             purpose=validated_data['purpose'],
-            is_active=True
+            status=Consent.Status.GRANTED
         ).exists():
             raise serializers.ValidationError(
-                "An active consent for this staff member and purpose already exists."
+                "A granted consent for this staff member and purpose already exists."
             )
 
         return super().create(validated_data)
 
 
 # ──────────────────────────────────────────────────────
-# TODO (Abdullah): Implement ConsentRevokeSerializer
-#   - Fields: revocation_reason (optional text)
-#   - Used for POST /consents/<id>/revoke/
-#   - Set is_active=False and revoked_at=now
+# ConsentRevokeSerializer
 # ──────────────────────────────────────────────────────
 class ConsentRevokeSerializer(serializers.Serializer):
     revocation_reason = serializers.CharField(required=False, allow_blank=True)
 
     def validate(self, attrs):
-        # Validate consent is currently active
-        if not self.instance.is_active:
-            raise serializers.ValidationError("This consent is already inactive or revoked.")
+        # Validate consent is currently granted or pending
+        if self.instance.status not in [Consent.Status.GRANTED, Consent.Status.PENDING]:
+            raise serializers.ValidationError("This consent is already denied or revoked.")
         return attrs
 
     def save(self, **kwargs):
@@ -155,3 +145,38 @@ class ConsentRevokeSerializer(serializers.Serializer):
         self.instance.revoke()
         
         return self.instance
+
+# ──────────────────────────────────────────────────────
+# ConsentRequestSerializer
+# ──────────────────────────────────────────────────────
+class ConsentRequestSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Consent
+        fields = ["patient", "purpose", "description"]
+
+    def create(self, validated_data):
+        staff = self.context.get("staff")
+        if not staff:
+            raise serializers.ValidationError("Staff context is missing. Cannot request consent.")
+            
+        validated_data['staff'] = staff
+        validated_data['status'] = Consent.Status.PENDING
+
+        patient = validated_data.get('patient')
+
+        if hasattr(patient, 'user') and hasattr(staff, 'user') and patient.user == staff.user:
+            raise serializers.ValidationError(
+                "PDPL Violation: Staff cannot request consent from themselves."
+            )
+
+        if Consent.objects.filter(
+            patient=patient,
+            staff=staff,
+            purpose=validated_data['purpose'],
+            status__in=[Consent.Status.PENDING, Consent.Status.GRANTED]
+        ).exists():
+            raise serializers.ValidationError(
+                "A pending or granted consent for this patient and purpose already exists."
+            )
+
+        return super().create(validated_data)

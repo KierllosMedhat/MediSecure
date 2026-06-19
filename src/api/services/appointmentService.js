@@ -26,8 +26,11 @@ const appointmentApi = {
   cancelAppointment: (appointmentId, reason) =>
     apiClient.patch(`/appointments/${appointmentId}`, {
       status: 'CANCELLED',
-      notes: reason,
+      cancelled_reason: reason,
     }),
+
+  updateAppointment: (appointmentId, data) =>
+    apiClient.put(`/appointments/${appointmentId}`, data),
 };
 
 export default appointmentApi;

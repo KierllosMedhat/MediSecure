@@ -35,4 +35,8 @@ urlpatterns = [
     # Gateway webhooks
     path("webhooks/fawry", views.FawryWebhookView.as_view(), name="fawry-webhook"),
     path("webhooks/card", views.CardWebhookView.as_view(), name="card-webhook"),
+
+    # Billing staff endpoints
+    path("generate-for-appointment", views.GenerateAppointmentBillView.as_view(), name="generate-appointment-bill"),
+    path("<int:pk>/mark-paid", views.MarkPaymentPaidView.as_view(), name="mark-payment-paid"),
 ]

@@ -6,6 +6,7 @@ Serializers for medical records and document management.
 
 from rest_framework import serializers
 from .models import MedicalRecord, Document
+from patients.models import Patient
 
 
 # ──────────────────────────────────────────────────────
@@ -28,7 +29,7 @@ class DocumentSerializer(serializers.ModelSerializer):
             "file_name", "file_path", "file_type", "file_size",
             "created_at",
         ]
-        read_only_fields = ["id", "uploaded_by", "file_size", "created_at"]
+        read_only_fields = ["id", "record", "uploaded_by", "file_name", "file_path", "file_type", "file_size", "created_at"]
 
     def get_uploaded_by_name(self, obj):
         # TODO (Fadi): Return uploader's full name
@@ -38,11 +39,7 @@ class DocumentSerializer(serializers.ModelSerializer):
         # TODO (Fadi): Validate file size (max 50MB) and allowed types
         pass
 
-    def create(self, validated_data):
-        # TODO (Fadi): Auto-set uploaded_by from request.user
-        # TODO (Fadi): Auto-detect file_type from extension
-        # TODO (Fadi): Calculate file_size from uploaded file
-        pass
+
 
 
 # ──────────────────────────────────────────────────────
@@ -64,8 +61,10 @@ class MedicalRecordListSerializer(serializers.ModelSerializer):
         ]
 
     def get_created_by_name(self, obj):
-        # TODO (Fadi): Return creator's full name
-        pass
+        if not obj.created_by:
+            return ""
+        name = f"{obj.created_by.first_name} {obj.created_by.last_name}".strip()
+        return name or obj.created_by.email
 
     def get_document_count(self, obj):
         # TODO (Fadi): Return obj.documents.count()
@@ -82,6 +81,7 @@ class MedicalRecordListSerializer(serializers.ModelSerializer):
 class MedicalRecordDetailSerializer(serializers.ModelSerializer):
     documents = DocumentSerializer(many=True, read_only=True)
     created_by_name = serializers.SerializerMethodField()
+    patient = serializers.PrimaryKeyRelatedField(queryset=Patient.objects.all(), required=False)
 
     class Meta:
         model = MedicalRecord
@@ -93,12 +93,12 @@ class MedicalRecordDetailSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "created_by", "created_at", "updated_at"]
 
     def get_created_by_name(self, obj):
-        # TODO (Fadi): Return creator's full name
-        pass
+        if not obj.created_by:
+            return ""
+        name = f"{obj.created_by.first_name} {obj.created_by.last_name}".strip()
+        return name or obj.created_by.email
 
-    def create(self, validated_data):
-        # TODO (Fadi): Auto-set created_by from request.user
-        pass
+
 
 
 # ──────────────────────────────────────────────────────

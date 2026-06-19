@@ -32,7 +32,6 @@ class PatientListView(generics.ListAPIView):
 
     serializer_class = PatientSerializer
     permission_classes = [IsAuthenticated, IsStaff]
-    queryset = Patient.objects.select_related("user").all()
     filterset_fields = ["blood_type"]
     search_fields = [
         "national_id",
@@ -44,6 +43,18 @@ class PatientListView(generics.ListAPIView):
     ordering_fields = ["created_at", "updated_at", "date_of_birth"]
     ordering = ["-created_at"]
 
+    def get_queryset(self):
+        user = self.request.user
+        qs = Patient.objects.select_related("user").all()
+
+        if user.role in ["ADMIN", "BILLING_STAFF"]:
+            return qs
+
+        if user.role in ["DOCTOR", "NURSE"]:
+            return qs
+
+        return Patient.objects.none()
+
 
 class PatientDetailView(generics.RetrieveAPIView):
     """Retrieve a patient profile. Staff see all; patients see only themselves."""
@@ -52,10 +63,16 @@ class PatientDetailView(generics.RetrieveAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+        user = self.request.user
         queryset = Patient.objects.select_related("user")
-        if self.request.user.role in IsStaff.STAFF_ROLES:
+        
+        if user.role in ["ADMIN", "BILLING_STAFF"]:
             return queryset
-        return queryset.filter(user=self.request.user)
+            
+        if user.role in ["DOCTOR", "NURSE"]:
+            return queryset
+            
+        return queryset.filter(user=user)
 
 
 class PatientDashboardView(generics.GenericAPIView):
@@ -75,7 +92,7 @@ class PatientDashboardView(generics.GenericAPIView):
             scheduled_at__gte=now,
             status__in=["SCHEDULED", "CONFIRMED"],
         )
-        active_consents = patient.consents.filter(is_active=True).filter(
+        active_consents = patient.consents.filter(status="GRANTED").filter(
             Q(expires_at__isnull=True) | Q(expires_at__gt=now)
         )
         pending_payments = patient.payments.filter(status__in=["PENDING", "PROCESSING"])

@@ -18,6 +18,26 @@ import apiClient from '../apiClient';
 
 const consentApi = {
   /**
+   * Request consent from a patient
+   * @param {Object} data - { patient: ID, purpose: string, description: string }
+   */
+  requestConsent: (data) => apiClient.post(`/consents/request/`, data),
+
+  /**
+   * Approve a pending consent
+   * @param {number} patientId
+   * @param {number} consentId
+   */
+  approveConsent: (patientId, consentId) => apiClient.post(`/patients/${patientId}/consents/${consentId}/approve`),
+
+  /**
+   * Deny a pending consent
+   * @param {number} patientId
+   * @param {number} consentId
+   */
+  denyConsent: (patientId, consentId) => apiClient.post(`/patients/${patientId}/consents/${consentId}/deny`),
+
+  /**
    * Get all consents for a patient.
    * @param {number} patientId
    * @param {{ is_active?: boolean }} params

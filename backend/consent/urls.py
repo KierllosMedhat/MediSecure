@@ -24,5 +24,7 @@ app_name = "consent"
 
 urlpatterns = [
     path("check/", views.ConsentCheckView.as_view(), name="consent-check"),
+    path("request", views.ConsentRequestView.as_view(), name="consent-request"),
+    path("request/", views.ConsentRequestView.as_view(), name="consent-request-slash"),
     path("<int:pk>/", views.ConsentDetailView.as_view(), name="consent-detail"),
 ]

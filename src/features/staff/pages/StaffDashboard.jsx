@@ -1,48 +1,52 @@
-/**
- * Staff Dashboard — overview for staff/admin users.
- * Owner: Kyrillos
- *
- * Sections:
- * - Stat cards grid (4 cols): today's appointments, active patients, pending records, unread notifications
- * - Dashboard widgets: RecentUploadsWidget + quick actions
- */
-import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../auth/hooks/useAuth';
-import { Card } from '../../../components/ui';
+import useStaffDashboard from '../hooks/useStaffDashboard';
 import RecentUploadsWidget from '../../records/components/RecentUploadsWidget';
 import {
   IoCalendarOutline,
   IoPeopleOutline,
   IoDocumentTextOutline,
   IoNotificationsOutline,
+  IoTimeOutline,
 } from 'react-icons/io5';
+import '../../patients/pages/PatientPages.css';
 import './StaffPages.css';
 
-/* ---------- Dummy dashboard data ---------- */
-const DUMMY_STATS = {
-  todays_appointments: 8,
-  active_patients: 124,
-  pending_records: 5,
-  unread_notifications: 3,
-};
-
-const DUMMY_UPLOADS = [
-  { id: 1, title: 'Blood Test Report — Omar Tarek', date: '2026-05-16' },
-  { id: 2, title: 'MRI Scan — Noura Said', date: '2026-05-15' },
-  { id: 3, title: 'Prescription — Ahmed Fathi', date: '2026-05-15' },
-  { id: 4, title: 'X-Ray Results — Sara Ali', date: '2026-05-14' },
-];
-
 /* ---------- Stat Card ---------- */
-function StaffStatCard({ icon, iconColor, value, label }) {
+function StatCard({ label, value, subtitle, subtitleColor, icon }) {
   return (
-    <div className="staff-stat-card">
-      <div className={`staff-stat-card__icon staff-stat-card__icon--${iconColor}`}>
-        {icon}
+    <div className="stat-card animate-fade-in-up">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <span className="stat-card__label">{label}</span>
+        {icon && <span style={{ fontSize: '1.5rem', color: 'var(--color-primary-light)' }}>{icon}</span>}
       </div>
-      <span className="staff-stat-card__value">{value}</span>
-      <span className="staff-stat-card__label">{label}</span>
+      <span className="stat-card__value">{value}</span>
+      {subtitle && (
+        <span
+          className="stat-card__subtitle"
+          style={subtitleColor ? { color: subtitleColor } : undefined}
+        >
+          {subtitle}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/* ---------- Appointment Item ---------- */
+function AppointmentItem({ appointment }) {
+  return (
+    <div className="record-item">
+      <div className="record-item__icon">
+        <IoTimeOutline />
+      </div>
+      <div className="record-item__info">
+        <span className="record-item__title">{appointment.patient_name}</span>
+        <span className="record-item__meta">
+          {new Date(appointment.date).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })} &bull; {appointment.type.replace('_', ' ')}
+        </span>
+      </div>
+      <span className="record-item__tag">{appointment.status}</span>
     </div>
   );
 }
@@ -53,89 +57,114 @@ function StaffStatCard({ icon, iconColor, value, label }) {
 export default function StaffDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [stats, setStats] = useState(DUMMY_STATS);
-  const [uploads, setUploads] = useState(DUMMY_UPLOADS);
+  const { stats, recentRecords: uploads, upcomingAppointments, loading, error } = useStaffDashboard();
 
-  /*
-   * When the backend is ready, uncomment this block to fetch real data:
-   *
-   * useEffect(() => {
-   *   const fetchStats = async () => {
-   *     try {
-   *       const [apptRes, notifRes] = await Promise.all([
-   *         appointmentApi.getAppointments({ from_date: new Date().toISOString().split('T')[0] }),
-   *         notificationApi.getNotifications(),
-   *       ]);
-   *       setStats({
-   *         todays_appointments: apptRes.data.length,
-   *         active_patients: 124,
-   *         pending_records: 5,
-   *         unread_notifications: notifRes.data.filter(n => !n.read_at).length,
-   *       });
-   *     } catch (err) {
-   *       console.error('Failed to fetch dashboard stats:', err);
-   *     }
-   *   };
-   *   fetchStats();
-   * }, []);
-   */
+  if (loading) {
+    return (
+      <div className="patient-dashboard">
+        <div className="dashboard-loading">
+          <div className="dashboard-loading__spinner" />
+          <p>Loading dashboard…</p>
+        </div>
+      </div>
+    );
+  }
+
+  const firstName = user?.first_name || user?.name?.split(' ')[0] || 'Staff Member';
 
   return (
-    <div className="staff-dashboard animate-fade-in">
+    <div className="patient-dashboard animate-fade-in">
       <div className="page-header">
-        <h1 className="page-title">Staff Dashboard</h1>
-        <p className="page-subtitle">Welcome back, {user?.first_name || user?.name || 'Staff Member'}.</p>
+        <h1 className="page-title dashboard-title">Welcome back, {firstName}</h1>
+        <p className="page-subtitle">Here is your schedule and overview for today.</p>
       </div>
 
       {/* ---- Stat Cards Grid ---- */}
-      <div className="staff-stats-grid">
-        <StaffStatCard
-          icon={<IoCalendarOutline />}
-          iconColor="blue"
-          value={stats.todays_appointments}
+      <div className="stats-grid">
+        <StatCard
           label="Today's Appointments"
+          value={stats.todays_appointments}
+          icon={<IoCalendarOutline />}
         />
-        <StaffStatCard
-          icon={<IoPeopleOutline />}
-          iconColor="green"
-          value={stats.active_patients}
+        <StatCard
           label="Active Patients"
+          value={stats.active_patients}
+          icon={<IoPeopleOutline />}
         />
-        <StaffStatCard
-          icon={<IoDocumentTextOutline />}
-          iconColor="amber"
+        <StatCard
+          label="Pending Consents"
           value={stats.pending_records}
-          label="Pending Records"
+          icon={<IoDocumentTextOutline />}
         />
-        <StaffStatCard
-          icon={<IoNotificationsOutline />}
-          iconColor="purple"
-          value={stats.unread_notifications}
+        <StatCard
           label="Unread Notifications"
+          value={stats.unread_notifications}
+          icon={<IoNotificationsOutline />}
         />
       </div>
 
-      {/* ---- Widgets Row ---- */}
-      <div className="staff-dashboard-widgets">
-        <RecentUploadsWidget uploads={uploads} />
-        <Card title="Quick Actions" subtitle="Shortcuts to common tasks">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+      {/* ---- Two Column Layout ---- */}
+      <div className="dashboard-columns">
+        {/* ---- Left Column ---- */}
+        <div className="dashboard-col-main">
+          {/* Upcoming Appointments */}
+          <section className="dashboard-card">
+            <div className="dashboard-card__header">
+              <div>
+                <h2 className="dashboard-card__title">Upcoming Appointments</h2>
+                <p className="dashboard-card__subtitle">Your schedule for the upcoming days</p>
+              </div>
+              <button
+                className="btn-outline btn-sm"
+                onClick={() => navigate(`/appointments/new`)}
+              >
+                <IoCalendarOutline /> Schedule
+              </button>
+            </div>
+            <div className="dashboard-card__body">
+              {!upcomingAppointments || upcomingAppointments.length === 0 ? (
+                <p className="dashboard-card__empty" style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: 'var(--space-4) 0' }}>No upcoming appointments.</p>
+              ) : (
+                upcomingAppointments.map((appt) => (
+                  <AppointmentItem key={appt.id} appointment={appt} />
+                ))
+              )}
+            </div>
             <button
-              className="staff-table-action"
-              style={{ justifyContent: 'center', padding: 'var(--space-2) var(--space-4)' }}
-              onClick={() => navigate('/appointments/new')}
+              className="dashboard-card__view-all"
+              onClick={() => navigate(`/appointments`)}
             >
-              <IoCalendarOutline /> Schedule Appointment
+              View All Appointments
             </button>
-            <button
-              className="staff-table-action"
-              style={{ justifyContent: 'center', padding: 'var(--space-2) var(--space-4)' }}
-              onClick={() => navigate('/notifications')}
-            >
-              <IoNotificationsOutline /> View Notifications
-            </button>
-          </div>
-        </Card>
+          </section>
+
+          {/* Recent Uploads */}
+          <section className="dashboard-card" style={{ padding: 0, border: 'none', background: 'transparent', boxShadow: 'none' }}>
+            <RecentUploadsWidget uploads={uploads} />
+          </section>
+        </div>
+
+        {/* ---- Right Column (Sidebar) ---- */}
+        <div className="dashboard-col-side">
+          <section className="dashboard-card profile-sidebar-card">
+            <h2 className="dashboard-card__title profile-sidebar-card__title">Quick Links</h2>
+            <div className="profile-sidebar" style={{ alignItems: 'stretch' }}>
+              <button
+                className="btn-outline btn-block"
+                style={{ marginBottom: 'var(--space-2)' }}
+                onClick={() => navigate('/staff/patients')}
+              >
+                <IoPeopleOutline /> Patient Directory
+              </button>
+              <button
+                className="btn-outline btn-block"
+                onClick={() => navigate('/notifications')}
+              >
+                <IoNotificationsOutline /> Notifications
+              </button>
+            </div>
+          </section>
+        </div>
       </div>
     </div>
   );

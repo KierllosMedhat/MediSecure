@@ -10,6 +10,7 @@ import LoginPage from "./features/auth/pages/LoginPage";
 import SignUpPage from "./features/auth/pages/SignUpPage";
 import ForgotPasswordPage from "./features/auth/pages/ForgotPasswordPage";
 import ResetPasswordPage from "./features/auth/pages/ResetPasswordPage";
+import ChangePasswordPage from "./features/auth/pages/ChangePasswordPage";
 
 /* ---- Landing Page (Abanob) ---- */
 import LandingPage from "./pages/LandingPage";
@@ -17,11 +18,13 @@ import LandingPage from "./pages/LandingPage";
 /* ---- Patient Pages (Abanob) ---- */
 import PatientDashboard from "./features/patients/pages/PatientDashboard";
 import PatientProfile from "./features/patients/pages/PatientProfile";
+import PatientList from "./features/patients/pages/PatientList";
 
 /* ---- Records Pages (Fadi) ---- */
 import RecordsList from "./features/records/pages/RecordsList";
 import RecordDetail from "./features/records/pages/RecordDetail";
 import UploadRecord from "./features/records/pages/UploadRecord";
+import EditRecord from "./features/records/pages/EditRecord";
 
 /* ---- Consent Pages (Abdullah) ---- */
 import ConsentManagement from "./features/consent/pages/ConsentManagement";
@@ -37,7 +40,7 @@ import StaffForm from "./features/staff/pages/StaffForm";
 
 /* ---- Appointments (Kyrillos) ---- */
 import AppointmentsList from "./features/appointments/pages/AppointmentsList";
-import CreateAppointment from "./features/appointments/pages/CreateAppointment";
+import AppointmentForm from "./features/appointments/pages/AppointmentForm";
 
 /* ---- Notifications (Kyrillos) ---- */
 import NotificationsPage from "./features/notifications/pages/NotificationsPage";
@@ -48,8 +51,18 @@ import AuditLogsPage from "./features/audit/pages/AuditLogsPage";
 /* ---- Route Guards (Abanob) ---- */
 import ProtectedRoute from "./features/auth/components/ProtectedRoute";
 import PublicRoute from "./features/auth/components/PublicRoute";
+import { useAuth } from "./features/auth/hooks/useAuth";
+import StaffProfile from "./features/staff/pages/StaffProfile";
 
 import "./App.css";
+
+function ProfileRouter() {
+  const { user } = useAuth();
+  if (user?.role === ROLES.PATIENT) {
+    return <PatientProfile />;
+  }
+  return <StaffProfile />;
+}
 
 function App() {
   return (
@@ -88,6 +101,7 @@ function App() {
             element={<RecordDetail />}
           />
           <Route path="/patients/:id/records/upload" element={<UploadRecord />} />
+          <Route path="/patients/:id/records/:recordId/edit" element={<EditRecord />} />
 
           {/* Consent */}
           <Route
@@ -104,10 +118,17 @@ function App() {
 
           {/* Appointments */}
           <Route path="/appointments" element={<AppointmentsList />} />
-          <Route path="/appointments/new" element={<CreateAppointment />} />
+          <Route path="/appointments/new" element={<AppointmentForm />} />
+          <Route path="/appointments/:id/edit" element={<AppointmentForm />} />
 
           {/* Notifications */}
           <Route path="/notifications" element={<NotificationsPage />} />
+
+          {/* Change Password */}
+          <Route path="/settings/change-password" element={<ChangePasswordPage />} />
+
+          {/* Profile (all roles) */}
+          <Route path="/profile" element={<ProfileRouter />} />
         </Route>
       </Route>
 
@@ -116,6 +137,7 @@ function App() {
         <Route element={<DashboardLayout />}>
           <Route path="/staff/dashboard" element={<StaffDashboard />} />
           <Route path="/staff/list" element={<StaffList />} />
+          <Route path="/staff/patients" element={<PatientList />} />
           <Route path="/admin/audit-logs" element={<AuditLogsPage />} />
         </Route>
       </Route>

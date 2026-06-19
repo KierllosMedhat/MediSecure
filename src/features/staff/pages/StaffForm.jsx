@@ -9,7 +9,7 @@
  */
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, Button, Input } from '../../../components/ui';
+import { Button, Input } from '../../../components/ui';
 import staffApi from '../../../api/services/staffService';
 import hospitalApi from '../../../api/services/hospitalService';
 import {

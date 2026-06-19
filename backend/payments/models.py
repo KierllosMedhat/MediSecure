@@ -46,6 +46,13 @@ class Payment(models.Model):
         on_delete=models.CASCADE,
         related_name="payments",
     )
+    appointment = models.ForeignKey(
+        "appointments.Appointment",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="payments",
+    )
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     currency = models.CharField(
         max_length=3,

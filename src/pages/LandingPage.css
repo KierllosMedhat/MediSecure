@@ -31,9 +31,10 @@
   text-decoration: none;
 }
 
-.landing-nav__icon {
-  color: var(--color-primary);
-  font-size: 1.5rem;
+.landing-nav__logo {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
 }
 
 .landing-nav__links {
@@ -271,9 +272,10 @@
   margin-bottom: var(--space-2);
 }
 
-.landing-footer__brand svg {
-  color: var(--color-primary);
-  font-size: 1.25rem;
+.landing-footer__logo {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
 }
 
 .landing-footer__tagline {

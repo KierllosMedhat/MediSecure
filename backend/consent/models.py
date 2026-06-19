@@ -25,6 +25,12 @@ class Consent(models.Model):
         REFERRAL = "REFERRAL", "Referral"
         OTHER = "OTHER", "Other"
 
+    class Status(models.TextChoices):
+        PENDING = "PENDING", "Pending"
+        GRANTED = "GRANTED", "Granted"
+        DENIED = "DENIED", "Denied"
+        REVOKED = "REVOKED", "Revoked"
+
     patient = models.ForeignKey(
         "patients.Patient",
         on_delete=models.CASCADE,
@@ -39,8 +45,12 @@ class Consent(models.Model):
         max_length=20,
         choices=Purpose.choices,
     )
+    status = models.CharField(
+        max_length=15,
+        choices=Status.choices,
+        default=Status.PENDING,
+    )
     description = models.TextField(blank=True, default="")
-    is_active = models.BooleanField(default=True)
     granted_at = models.DateTimeField(auto_now_add=True)
     revoked_at = models.DateTimeField(null=True, blank=True)
     expires_at = models.DateTimeField(null=True, blank=True)
@@ -50,21 +60,20 @@ class Consent(models.Model):
         ordering = ["-granted_at"]
         verbose_name = "Consent"
         verbose_name_plural = "Consents"
-        # Prevent duplicate active consents for same patient+staff+purpose
+        # Prevent duplicate granted consents for same patient+staff+purpose
         constraints = [
             models.UniqueConstraint(
                 fields=["patient", "staff", "purpose"],
-                condition=models.Q(is_active=True),
-                name="unique_active_consent",
+                condition=models.Q(status="GRANTED"),
+                name="unique_granted_consent",
             )
         ]
 
     def __str__(self):
-        status = "Active" if self.is_active else "Revoked"
-        return f"Consent ({status}): {self.purpose} — Patient #{self.patient_id}"
+        return f"Consent ({self.status}): {self.purpose} — Patient #{self.patient_id}"
 
     def revoke(self):
         """Soft-delete/Revoke logic for PDPL compliance"""
-        self.is_active = False
+        self.status = self.Status.REVOKED
         self.revoked_at = timezone.now()
-        self.save(update_fields=['is_active', 'revoked_at'])
+        self.save(update_fields=['status', 'revoked_at'])

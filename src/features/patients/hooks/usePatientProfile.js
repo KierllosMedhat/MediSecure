@@ -31,24 +31,7 @@ function validateProfileForm(formData) {
   return errors;
 }
 
-/* ---------- Mock Profile (development fallback) ---------- */
-const MOCK_PROFILE = {
-  patient_id: 'P-12345',
-  user_id: 'U-001',
-  first_name: 'John',
-  middle_name: '',
-  last_name: 'Doe',
-  email: 'john.doe@email.com',
-  phone_number: '+20 123 456 7890',
-  national_id: '29901012345678',
-  date_of_birth: '1985-01-15',
-  blood_type: 'O+',
-  emergency_contact: 'Jane Doe — +20 123 456 0000',
-  emergency_contact_phone: '+20 123 456 0000',
-  address: '12 Tahrir Square, Cairo, Egypt',
-  role: 'PATIENT',
-  created_at: '2025-11-01T10:00:00Z',
-};
+
 
 export default function usePatientProfile() {
   const { user, updateUser } = useAuth();
@@ -70,9 +53,16 @@ export default function usePatientProfile() {
       setProfile(data);
       setFormData({ ...data });
     } catch {
-      /* Fallback to mock data during development */
-      setProfile(MOCK_PROFILE);
-      setFormData({ ...MOCK_PROFILE });
+      /* Fallback to user context for staff who don't have a patient profile */
+      const fallbackProfile = {
+        first_name: user?.first_name || user?.name?.split(' ')[0] || '',
+        last_name: user?.last_name || user?.name?.split(' ').slice(1).join(' ') || '',
+        email: user?.email || '',
+        phone_number: '',
+        role: user?.role || '',
+      };
+      setProfile(fallbackProfile);
+      setFormData(fallbackProfile);
     } finally {
       setLoading(false);
     }

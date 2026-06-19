@@ -21,6 +21,7 @@ from .models import Payment
 # ──────────────────────────────────────────────────────
 class PaymentSerializer(serializers.ModelSerializer):
     patient_name = serializers.SerializerMethodField()
+    appointment_info = serializers.SerializerMethodField()
 
     class Meta:
         model = Payment
@@ -28,7 +29,7 @@ class PaymentSerializer(serializers.ModelSerializer):
             "id", "patient", "patient_name", "amount", "currency",
             "payment_type", "gateway_type", "status",
             "gateway_reference_id", "receipt_url", "description",
-            "paid_at", "created_at", "updated_at",
+            "paid_at", "created_at", "updated_at", "appointment_info"
         ]
         read_only_fields = [
             "id", "status", "gateway_reference_id",
@@ -45,6 +46,19 @@ class PaymentSerializer(serializers.ModelSerializer):
         if value <= 0:
             raise serializers.ValidationError("The payment amount must be greater than zero.")
         return value
+
+    def get_appointment_info(self, obj):
+        if obj.appointment:
+            date_str = obj.appointment.scheduled_at.strftime('%Y-%m-%d %H:%M') if obj.appointment.scheduled_at else "TBD"
+            staff_name = " ".join(part for part in [obj.appointment.staff.user.first_name, obj.appointment.staff.user.last_name] if part).strip()
+            if not staff_name:
+                staff_name = obj.appointment.staff.user.email
+            return {
+                "id": obj.appointment.id,
+                "date": date_str,
+                "doctor": staff_name,
+            }
+        return None
 
 
 # ──────────────────────────────────────────────────────

@@ -8,10 +8,11 @@
  * - Show empty state if no uploads
  */
 import { Card } from '../../../components/ui';
-import {useState} from 'react';
+
 import DocumentSection from './DocumentSection';
+import recordsApi from '../../../api/services/recordsService';
 export default function RecentUploadsWidget({ uploads = [] }) {
-const [docError,setDocError] = useState(null);
+const docError = null;
 
 // transforming uploads to correct attribute naming
 const readyDocs = uploads.map(
@@ -19,7 +20,7 @@ const readyDocs = uploads.map(
     {
       document_id:upload.id,
       file_name:upload.title,
-      created_at:upload.date,
+      created_at:upload.created_at || upload.date,
       file_type:'document' // no file type in original input
     }
   )

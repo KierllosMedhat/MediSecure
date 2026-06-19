@@ -66,6 +66,23 @@ const paymentApi = {
    */
   getReceipt: (paymentId) =>
     apiClient.get(`/payments/${paymentId}/receipt`),
+
+  /**
+   * Generate a bill for an appointment (Billing Staff).
+   * @param {number} appointment_id
+   * @param {number} amount
+   * @returns {Promise<{ data: { payment_id: number, status: string } }>}
+   */
+  generateAppointmentBill: (appointment_id, amount) =>
+    apiClient.post('/payments/generate-for-appointment', { appointment_id, amount }),
+
+  /**
+   * Mark a payment as paid manually (Billing Staff).
+   * @param {number} paymentId
+   * @returns {Promise<{ data: { payment_id: number, status: string } }>}
+   */
+  markPaymentPaid: (paymentId) =>
+    apiClient.post(`/payments/${paymentId}/mark-paid`),
 };
 
 export default paymentApi;

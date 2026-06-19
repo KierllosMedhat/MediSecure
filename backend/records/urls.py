@@ -34,7 +34,7 @@ urlpatterns = [
     # POST /records/<id>/documents → upload document
     path(
         "<int:record_id>/documents",
-        views.DocumentUploadView.as_view(),
+        views.DocumentListUploadView.as_view(),
         name="document-list-upload",
     ),
 

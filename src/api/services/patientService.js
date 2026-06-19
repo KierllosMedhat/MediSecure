@@ -13,6 +13,7 @@
 import apiClient from '../apiClient';
 
 const patientApi = {
+  getPatients: () => apiClient.get('/patients'),
   /**
    * Fetch the authenticated patient's profile (merged User + Patient data).
    *

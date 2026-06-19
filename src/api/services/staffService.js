@@ -64,6 +64,21 @@ const staffApi = {
    */
   getStaffDashboard: () =>
     apiClient.get('/staff/dashboard'),
+
+  /**
+   * Get the authenticated staff member's own profile.
+   * @returns {Promise<{ data: Staff }>}
+   */
+  getProfile: () =>
+    apiClient.get('/staff/profile'),
+
+  /**
+   * Update the authenticated staff member's own profile.
+   * @param {object} data
+   * @returns {Promise<{ data: Staff }>}
+   */
+  updateProfile: (data) =>
+    apiClient.put('/staff/profile', data),
 };
 
 export default staffApi;

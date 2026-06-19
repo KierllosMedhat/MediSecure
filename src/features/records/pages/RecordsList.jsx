@@ -6,205 +6,178 @@
  *   MedicalRecord → Record_Id, Patient_Id, Created_by (Staff_Id),
  *                    Record_type, Title, Description
  *   Document → Document_Id, Record_Id (FK), file_name, file_type, file_size
- *
- * TODO:
- * - Fetch records from recordsApi.getRecords(patientId, { record_type, from_date })
- * - Filter bar: Record_type dropdown (DIAGNOSIS, LAB_RESULT, PRESCRIPTION, IMAGING), date picker
- * - DataTable columns: Title, Record_type (StatusBadge), Created_by (staff name), created_at
- * - On row click, navigate to /patients/:id/records/:recordId
- * - "Upload Record" button → /records/upload (not implemented yet)
- * - Handle consent 403 errors gracefully
  */
-import { useParams } from 'react-router-dom';
-import { DataTable, Button,StatusBadge } from '../../../components/ui';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { DataTable, Button, StatusBadge } from '../../../components/ui';
 import recordsApi from '../../../api/services/recordsService';
+import consentApi from '../../../api/services/consentService';
 import './RecordPages.css';
-import { useNavigate } from 'react-router-dom';
 
-import { useState,useEffect } from 'react';
 export default function RecordsList() {
-  //const { id: patientId } = useParams();
+  const { id: patientIdParam } = useParams();
   const navigate = useNavigate();
-const [patientId,setPatientId] = useState(null);
-  // dummy data for testing
-const DUMMY_PATIENT_ID = "1";
 
-const DUMMY_RECORDS_FOR_PATIENT_1 = [
-  {
-    record_id: 101,
-    title: "Blood Test Report - April 2026",
-    record_type: "LAB_RESULT",
-    created_by: "Dr. Sara Ahmed",
-    created_at: "2026-05-01T10:30:00Z",
-  },
-  {
-    record_id: 102,
-    title: "Chest X-Ray - Follow up",
-    record_type: "IMAGING",
-    created_by: "Dr. Omar Hassan",
-    created_at: "2026-05-03T14:10:00Z",
-  },
-];
+  const currentUser = getUserFromStorage();
+  const patientId = patientIdParam || currentUser?.id || 1;
+  const isStaff = currentUser?.role === 'DOCTOR' || currentUser?.role === 'NURSE' || currentUser?.role === 'BILLING_STAFF';
 
-const DUMMY_RECORDS_FOR_PATIENT_2 = [
-  {
-    record_id: 101,
-    title: "CBC - MAY 2026",
-    record_type: "LAB_RESULT",
-    created_by: "Dr. Sara Ahmed",
-    created_at: "2026-05-24T10:30:00Z",
-  },
-  {
-    record_id: 102,
-    title: "Leg X-Ray - Follow up",
-    record_type: "IMAGING",
-    created_by: "Dr. Omar Hassan",
-    created_at: "2026-05-24T14:10:00Z",
-  },
-];
-
+  const [records, setRecords] = useState([]);
+  const [recordType, setRecordType] = useState('all');
+  const [fromDate, setFromDate] = useState('2026-01-01');
+  const [emptyMessage, setEmptyMessage] = useState('Loading...');
   
-const [records,setRecords] = useState(null);
+  // Consent workflow states
+  const [consentStatus, setConsentStatus] = useState('GRANTED'); 
+  const [requestPurpose, setRequestPurpose] = useState('TREATMENT');
+  const [isRequesting, setIsRequesting] = useState(false);
 
-const [recordType,setRecordType] = useState('all');
-const [fromDate,setFromDate] = useState('2026-01-01');
-
-const [emptyMessage,setEmptyMessage] = useState('No records found.');
-
-
-const retrieveRecords = async (filters={}) => {
-  try{
-  const response = await recordsApi.getRecords(patientId, filters);
-  setRecords(response.data);
-  } catch (error) {
-    switch(error.response.status){
-      case 403:
-        setEmptyMessage('Access denied. You do not have permission to view this resource.');
-        break;
-      case 404:
+  const retrieveRecords = async (filters = {}) => {
+    try {
+      const response = await recordsApi.getRecords(patientId, filters);
+      setRecords(response.data.results || response.data || []);
+      setConsentStatus('GRANTED');
+      if ((response.data.results || response.data || []).length === 0) {
+        setEmptyMessage('No records found.');
+      }
+    } catch (error) {
+      if (error.response?.status === 403) {
+        if (isStaff && patientIdParam && patientIdParam !== 'me') {
+          checkConsentState();
+        } else {
+          setEmptyMessage('Access denied. You do not have permission to view this resource.');
+          setConsentStatus('DENIED');
+        }
+      } else if (error.response?.status === 404) {
         setEmptyMessage('The requested resource was not found.');
-        break;
-      default:
+      } else {
         setEmptyMessage('An unexpected error occurred.');
+      }
     }
+  };
+
+  const checkConsentState = async () => {
+    try {
+      // Default to TREATMENT to check if any request is pending.
+      // The API returns the latest consent for this patient/staff.
+      const res = await consentApi.checkConsent(patientIdParam, currentUser.staff_id || currentUser.id, requestPurpose);
+      setConsentStatus(res.data.status || 'NONE');
+    } catch (err) {
+      console.error("Failed to check consent", err);
+      setConsentStatus('NONE');
     }
-}
+  };
 
-
-function getUserIdFromStorage() {
-  try {
-    const raw = sessionStorage.getItem('user');
-    if (!raw) return null;
-
-    const user = JSON.parse(raw);
-
-    if(user.id){
-      return user.id;
+  const handleRequestAccess = async () => {
+    setIsRequesting(true);
+    try {
+      await consentApi.requestConsent({
+        patient: patientIdParam,
+        purpose: requestPurpose,
+        description: 'Requested access via Records dashboard.'
+      });
+      setConsentStatus('PENDING');
+      alert("Access request sent to patient.");
+    } catch (error) {
+      console.error(error);
+      alert(error.response?.data?.detail || JSON.stringify(error.response?.data) || "Failed to request access.");
+    } finally {
+      setIsRequesting(false);
     }
-    return null; // supports either naming
+  };
 
-    //return 1; // dummy for now
-  } catch {
-    return null;
+  function getUserFromStorage() {
+    try {
+      const raw = sessionStorage.getItem('user');
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
   }
-}
 
+  useEffect(() => {
+    retrieveRecords();
+  }, [patientIdParam]);
 
-//setting initial id
-useEffect(()=>{
- const currentUserID = getUserIdFromStorage();
+  const handleFilter = () => {
+    retrieveRecords({ record_type: recordType !== 'all' ? recordType : undefined, from_date: fromDate });
+  };
 
- if(currentUserID){
-  setPatientId(currentUserID);
-  return;
- }else{
-setPatientId(1);//dummyid
- }
-return;
-}
-  ,[])
+  const handleRowClick = (record) => {
+    navigate(`/patients/${patientIdParam || 'me'}/records/${record.id || record.record_id}`, {
+      state: { id: patientId, recordId: record.record_id || record.id }
+    });
+  };
 
+  const columns = [
+    { key: 'title', label: 'Title' },
+    { key: 'record_type', label: 'Record Type', render: (value) => <StatusBadge status={value} /> },
+    { key: 'created_by_name', label: 'Created By' },
+    { key: 'created_at', label: 'Created At', render: (value) => (value ? new Date(value).toLocaleString() : 'N/A') },
+  ];
 
-
-//intial records set before filtration
-useEffect(() => {
-  if(Number(patientId) === 1){
-    setRecords(DUMMY_RECORDS_FOR_PATIENT_1);
-    return;
-  } else if (Number(patientId) === 2){
-    setRecords(DUMMY_RECORDS_FOR_PATIENT_2)
-  }else {
-    setRecords(DUMMY_RECORDS_FOR_PATIENT_2)
+  if (consentStatus === 'PENDING') {
+    return (
+      <div className="records-filter-bar" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '3rem', gap: '1rem' }}>
+        <h2>Access Pending</h2>
+        <p>Your request to access these records is waiting for patient approval.</p>
+        <Button variant="secondary" onClick={() => retrieveRecords()}>Check Status Again</Button>
+      </div>
+    );
   }
-  //retrieveRecords();
-}, [patientId]);
 
- const handleFilter = (filters) => {
-  retrieveRecords(filters);
- }
- const handleRowClick = (record) => {
-  navigate(`/patients/me/records/currentRecord`,{
-    state: {id:patientId,recordId:record.record_id}
-  });
- }
-
- //prepare columns
-
- const columns = [
-  { key: 'title', label: 'Title' },
-  { key: 'record_type', label: 'Record Type',
-    render:(value) => (<StatusBadge status={value}/>)
-   },
-  { key: 'created_by', label: 'Created By' },
-  { key: 'created_at', label: 'Created At',
-    render: (value) => (value ? new Date(value).toLocaleString() : 'N/A'),
-  },
-]
-
-
+  if (consentStatus === 'NONE' || consentStatus === 'DENIED' || consentStatus === 'REVOKED') {
+    return (
+      <div className="records-filter-bar" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '3rem', gap: '1rem' }}>
+        <h2>Access Required</h2>
+        <p>You must request consent from the patient to view their medical records.</p>
+        
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          <select value={requestPurpose} onChange={(e) => setRequestPurpose(e.target.value)} style={{ padding: '0.5rem', borderRadius: '4px' }}>
+            <option value="TREATMENT">TREATMENT</option>
+            <option value="RESEARCH">RESEARCH</option>
+            <option value="INSURANCE">INSURANCE</option>
+            <option value="BILLING">BILLING</option>
+            <option value="EMERGENCY">EMERGENCY</option>
+            <option value="REFERRAL">REFERRAL</option>
+            <option value="OTHER">OTHER</option>
+          </select>
+          <Button variant="primary" onClick={handleRequestAccess} disabled={isRequesting}>
+            {isRequesting ? 'Requesting...' : 'Request Access'}
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
-    <div className="records-filter-bar">
-    <div className="records-filter-field">
-      <label className="records-filter-label" htmlFor="record-type">Record Type</label>
-      
-
-      {/* TODO: Add filter bar (Record_type select, from_date picker) */}
-      <select
-      id="record-type"
-      className="records-filter-select"
-      value={recordType}
-      onChange={(e) => setRecordType(e.target.value)}
-      >
-      <option value="all">All</option>
-      <option value="diagnosis">Diagnosis</option>
-      <option value="lab_result">Lab Result</option>
-      <option value="prescription">Prescription</option>
-      <option value="imaging">Imaging</option>
-    </select>
-</div>
-    
-  <div className="records-filter-field">
-    <label className="records-filter-label" htmlFor="from-date">From Date</label>
-    <input
-      type="date"
-      id="from-date"
-      className="records-filter-input"
-      value={fromDate}
-      onChange={(e) => setFromDate(e.target.value)}
-    />
-  </div>
-  <div className="records-filter-actions">
-    <Button onClick={() => handleFilter({recordType, fromDate})}>Filter</Button>
-  </div>
-  </div>
-{/* TODO: Add DataTable with MedicalRecord data */}
-
-    
-    <div>
-    <DataTable columns={columns} data={records} emptyMessage={emptyMessage} onRowClick={handleRowClick} />
+      <div className="records-filter-bar">
+        <div className="records-filter-field">
+          <label className="records-filter-label" htmlFor="record-type">Record Type</label>
+          <select id="record-type" className="records-filter-select" value={recordType} onChange={(e) => setRecordType(e.target.value)}>
+            <option value="all">All</option>
+            <option value="diagnosis">Diagnosis</option>
+            <option value="lab_result">Lab Result</option>
+            <option value="prescription">Prescription</option>
+            <option value="imaging">Imaging</option>
+          </select>
+        </div>
+        
+        <div className="records-filter-field">
+          <label className="records-filter-label" htmlFor="from-date">From Date</label>
+          <input type="date" id="from-date" className="records-filter-input" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+        </div>
+        <div className="records-filter-actions">
+          <Button onClick={handleFilter}>Filter</Button>
+          <Button variant="primary" onClick={() => navigate(`/patients/${patientIdParam || 'me'}/records/upload`)}>Add Record</Button>
+        </div>
       </div>
-      </>
+    
+      <div>
+        <DataTable columns={columns} data={records} emptyMessage={emptyMessage} onRowClick={handleRowClick} />
+      </div>
+    </>
   );
 }

@@ -26,6 +26,9 @@ urlpatterns = [
     # Dashboard
     path("dashboard", views.StaffDashboardView.as_view(), name="staff-dashboard"),
 
+    # Profile
+    path("profile", views.StaffProfileView.as_view(), name="staff-profile"),
+
     # Detail + Update
     path("<int:pk>", views.StaffDetailView.as_view(), name="staff-detail"),
 

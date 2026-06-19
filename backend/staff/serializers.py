@@ -149,3 +149,43 @@ class StaffDashboardSerializer(serializers.Serializer):
     today_appointments = serializers.IntegerField()
     pending_consents = serializers.IntegerField()
     recent_records = serializers.ListField(child=serializers.DictField())
+    upcoming_appointments = serializers.ListField(child=serializers.DictField())
+
+class StaffProfileSerializer(serializers.ModelSerializer):
+    """Serializer for staff member's own profile."""
+    staff_id = serializers.IntegerField(source="id", read_only=True)
+    user_id = serializers.IntegerField(source="user.id", read_only=True)
+    email = serializers.EmailField(source="user.email", read_only=True)
+    first_name = serializers.CharField(source="user.first_name", required=False)
+    middle_name = serializers.CharField(source="user.middle_name", required=False, allow_blank=True)
+    last_name = serializers.CharField(source="user.last_name", required=False)
+    phone_number = serializers.CharField(source="user.phone_number", required=False, allow_blank=True)
+    role = serializers.CharField(source="user.role", read_only=True)
+    hospital_name = serializers.CharField(source="hospital.name", read_only=True)
+    full_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Staff
+        fields = [
+            "id", "staff_id", "user_id", "email", "first_name", "middle_name",
+            "last_name", "phone_number", "role", "full_name",
+            "department", "license_no", "hospital_name", "address",
+        ]
+        read_only_fields = ["id", "staff_id", "user_id", "email", "role", "hospital_name", "department", "license_no"]
+
+    def get_full_name(self, obj):
+        parts = [obj.user.first_name, obj.user.middle_name, obj.user.last_name]
+        return " ".join(part for part in parts if part).strip()
+
+    def update(self, instance, validated_data):
+        user_data = validated_data.pop("user", {})
+        for attr, value in user_data.items():
+            setattr(instance.user, attr, value)
+        if user_data:
+            instance.user.save(update_fields=list(user_data.keys()))
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        return instance
+

@@ -1,25 +1,11 @@
-import { useParams, useNavigate } from 'react-router-dom';
-import { Card, Button, StatusBadge, DataTable } from '../../../components/ui';
 import '../pages/RecordPages.css';
-import recordsApi from '../../../api/services/recordsService';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef } from 'react';
 
-export default function DragAndDropFileUpload({patientId,recordId,file,handleFile,onUpload}){
+export default function DragAndDropFileUpload({ file, handleFile, onUpload }){
     // drag and drop states
     const [isDragging, setIsDragging] = useState(null);
     const inputRef = useRef();
     const [isUploading, setIsUploading] = useState(null);
-    
-
-    const handleonDragOver = (e) => {
-        e.preventDefault();
-        setIsDragging(false);
-      }
-    
-      const handleonDragLeave = (e) => {
-        e.preventDefault();
-        setIsDragging(true);
-      }
     
       const handleDragOver = (e) => {
         e.preventDefault();
@@ -44,7 +30,7 @@ export default function DragAndDropFileUpload({patientId,recordId,file,handleFil
         handleFile(selectedFile);
       };
 
-      const handleUpload=(e)=>{
+      const handleUpload=()=>{
         onUpload();
         setIsUploading(false);
       }

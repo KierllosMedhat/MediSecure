@@ -265,3 +265,31 @@
   color: var(--color-text-muted);
   margin-bottom: var(--space-6);
 }
+
+/* ---- Change Password Page (inside dashboard) ---- */
+.change-password-page {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-8) var(--space-4);
+}
+
+.change-password-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--auth-card-radius);
+  padding: var(--space-8);
+  width: 100%;
+  max-width: 480px;
+  animation: fadeInUp 0.3s ease-out;
+}
+
+.change-password-actions {
+  display: flex;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+.change-password-actions > * {
+  flex: 1;
+}
+

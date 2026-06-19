@@ -21,8 +21,10 @@
   border-bottom: 1px solid var(--color-border);
 }
 
-.sidebar__brand-icon {
-  font-size: 1.5rem;
+.sidebar__brand-img {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
 }
 
 .sidebar__brand-text {

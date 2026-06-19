@@ -25,6 +25,9 @@ const recordsApi = {
     apiClient.post('/records', data),
   // data: { patient_id, record_type, title, description }
 
+  updateRecord: (recordId, data) =>
+    apiClient.patch(`/records/${recordId}`, data),
+
   /* --- Documents (child of MedicalRecord) --- */
   getDocumentsByRecord: (recordId) =>
     apiClient.get(`/records/${recordId}/documents`),

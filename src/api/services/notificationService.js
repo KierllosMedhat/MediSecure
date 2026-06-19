@@ -45,6 +45,14 @@ const notificationApi = {
    */
   getUnreadCount: () =>
     apiClient.get('/notifications/unread-count'),
+
+  /**
+   * Delete a single notification.
+   * @param {number} notificationId
+   * @returns {Promise<void>}
+   */
+  deleteNotification: (notificationId) =>
+    apiClient.delete(`/notifications/${notificationId}/delete`),
 };
 
 export default notificationApi;

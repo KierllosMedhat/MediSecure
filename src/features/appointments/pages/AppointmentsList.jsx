@@ -9,8 +9,10 @@
  */
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, DataTable, StatusBadge, Modal, Input } from '../../../components/ui';
+import { useAuth } from '../../auth/hooks/useAuth';
+import { Button, DataTable, StatusBadge, Modal } from '../../../components/ui';
 import appointmentApi from '../../../api/services/appointmentService';
+import paymentApi from '../../../api/services/paymentService';
 import {
   IoAddOutline,
   IoSearchOutline,
@@ -102,6 +104,9 @@ function formatDateTime(dateStr) {
 
 export default function AppointmentsList() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isBillingStaff = user?.role === 'BILLING_STAFF';
+  const isPatient = user?.role === 'PATIENT';
 
   const [appointments, setAppointments] = useState(DUMMY_APPOINTMENTS);
   const [filtered, setFiltered] = useState(DUMMY_APPOINTMENTS);
@@ -186,6 +191,33 @@ export default function AppointmentsList() {
     }
   }, [cancelTarget, cancelReason, appointments]);
 
+  /* Billing Handlers */
+  const handleGenerateBill = async (appointmentId) => {
+    try {
+      await paymentApi.generateAppointmentBill(appointmentId, 150.00); // default amount for demo
+      const res = await appointmentApi.getAppointments();
+      const data = res.data.results || res.data;
+      setAppointments(data);
+      setFiltered(data);
+      setAlert({ type: 'success', message: 'Bill generated successfully.' });
+    } catch (err) {
+      setAlert({ type: 'error', message: 'Failed to generate bill.' });
+    }
+  };
+
+  const handleMarkPaid = async (paymentId) => {
+    try {
+      await paymentApi.markPaymentPaid(paymentId);
+      const res = await appointmentApi.getAppointments();
+      const data = res.data.results || res.data;
+      setAppointments(data);
+      setFiltered(data);
+      setAlert({ type: 'success', message: 'Bill marked as paid.' });
+    } catch (err) {
+      setAlert({ type: 'error', message: 'Failed to mark bill as paid.' });
+    }
+  };
+
   /* Table columns */
   const columns = [
     { key: 'patient_name', label: 'Patient' },
@@ -200,7 +232,7 @@ export default function AppointmentsList() {
       label: 'Duration',
       render: (value) => `${value} min`,
     },
-    { key: 'type', label: 'Type' },
+    { key: 'appointment_type', label: 'Type' },
     { key: 'location', label: 'Location' },
     {
       key: 'status',
@@ -208,21 +240,65 @@ export default function AppointmentsList() {
       render: (value) => <StatusBadge status={value} />,
     },
     {
+      key: 'bill_status',
+      label: 'Bill',
+      render: (_, row) => {
+        if (!row.payment_id) {
+          if (isBillingStaff && row.status === 'COMPLETED') {
+            return (
+              <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); handleGenerateBill(row.id); }}>
+                Generate Bill
+              </Button>
+            );
+          }
+          return <span style={{ color: 'var(--color-text-muted)' }}>No Bill</span>;
+        }
+        if (row.payment_status === 'PENDING') {
+          return (
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <StatusBadge status="PENDING" />
+              {isBillingStaff && (
+                <Button size="sm" variant="primary" onClick={(e) => { e.stopPropagation(); handleMarkPaid(row.payment_id); }}>
+                  Mark Paid
+                </Button>
+              )}
+            </div>
+          );
+        }
+        return <StatusBadge status={row.payment_status} />;
+      }
+    },
+    {
       key: 'actions',
       label: '',
       render: (_, row) => {
         const canCancel = !['CANCELLED', 'COMPLETED', 'NO_SHOW'].includes(row.status);
-        if (!canCancel) return null;
         return (
-          <button
-            className="appt-cancel-btn"
-            onClick={(e) => {
-              e.stopPropagation();
-              setCancelTarget(row);
-            }}
-          >
-            <IoCloseCircleOutline /> Cancel
-          </button>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {!isPatient && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(`/appointments/${row.id}/edit`);
+                }}
+              >
+                Edit
+              </Button>
+            )}
+            {canCancel && (
+              <button
+                className="appt-cancel-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setCancelTarget(row);
+                }}
+              >
+                <IoCloseCircleOutline /> Cancel
+              </button>
+            )}
+          </div>
         );
       },
     },
@@ -236,9 +312,11 @@ export default function AppointmentsList() {
             <h1 className="page-title">Appointments</h1>
             <p className="page-subtitle">View and manage all appointments.</p>
           </div>
-          <Button variant="primary" onClick={() => navigate('/appointments/new')}>
-            <IoAddOutline /> New Appointment
-          </Button>
+          {!isPatient && (
+            <Button variant="primary" onClick={() => navigate('/appointments/new')}>
+              <IoAddOutline /> New Appointment
+            </Button>
+          )}
         </div>
       </div>
 
