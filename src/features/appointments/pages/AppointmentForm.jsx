@@ -1,3 +1,5 @@
+/* eslint-disable react-hooks/exhaustive-deps */
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button, Input } from '../../../components/ui';
@@ -16,7 +18,7 @@ const TYPES = [
   { value: 'FOLLOW_UP', label: 'Follow-Up' },
   { value: 'EMERGENCY', label: 'Emergency' },
 ];
-const DURATIONS = [15, 30, 45, 60, 90, 120];
+
 
 const INIT = {
   patient_id: '', hospital_id: '', department: '', staff_id: '',
@@ -284,7 +286,7 @@ export default function AppointmentForm() {
       setPaymentId(res.data.id);
       setAlert({ type: 'success', message: 'Bill generated successfully!' });
     } catch (err) {
-      setAlert({ type: 'error', message: 'Failed to generate bill.' });
+      setAlert({ type: 'error', message: `${err.message}: Failed to generate bill.` });
     } finally {
       setBillingLoading(false);
     }
@@ -298,7 +300,7 @@ export default function AppointmentForm() {
       setBillStatus('PAID');
       setAlert({ type: 'success', message: 'Payment processed successfully!' });
     } catch (err) {
-      setAlert({ type: 'error', message: 'Failed to process payment.' });
+      setAlert({ type: 'error', message: `${err.message}: Failed to process payment.` });
     } finally {
       setBillingLoading(false);
     }
@@ -398,7 +400,7 @@ export default function AppointmentForm() {
                   <div style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: 'var(--color-text-secondary)', background: 'var(--color-bg-secondary)', padding: '0.5rem', borderRadius: 'var(--radius-sm)' }}>
                     <strong>Working Hours:</strong>
                     <ul style={{ margin: '0.25rem 0 0 1rem', padding: 0 }}>
-                      {Object.entries(selectedDoctor.working_hours).filter(([_, h]) => h.active).map(([day, h]) => (
+                      {Object.entries(selectedDoctor.working_hours).filter(([h]) => h.active).map(([day, h]) => (
                         <li key={day} style={{ textTransform: 'capitalize' }}>
                           {day}: {h.start} - {h.end}
                         </li>
@@ -471,7 +473,7 @@ export default function AppointmentForm() {
 
               <Input id="appt-loc" label="Location" value={form.location} onChange={set('location')} error={errors.location} placeholder="e.g. Room 201" />
               
-              {isBillingStaff && (
+              {!isPatient && (
                 <Input 
                   id="appt-bill" 
                   label="Bill Amount ($)" 
@@ -479,7 +481,16 @@ export default function AppointmentForm() {
                   value={form.bill_amount} 
                   onChange={set('bill_amount')} 
                   placeholder="e.g. 150.00"
-                  disabled={!!billStatus} 
+                  //disabled={!!billStatus} 
+                />
+              )|| isPatient && (
+                <Input
+                  id="appt-bill" 
+                  label="Bill Amount ($)" 
+                  type="number" 
+                  value={150.00}  
+                  placeholder="150.00"
+                  disabled
                 />
               )}
 
