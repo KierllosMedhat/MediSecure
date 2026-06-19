@@ -54,7 +54,7 @@ class StaffListCreateView(generics.ListCreateAPIView):
     def get_permissions(self):
         if self.request.method == "POST":
             return [IsAuthenticated(), IsAdmin()]
-        return [IsAuthenticated(), IsStaffMember()]
+        return [IsAuthenticated()]
 
 
 class StaffDetailView(generics.RetrieveUpdateAPIView):

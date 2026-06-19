@@ -54,13 +54,6 @@ export default function PaymentsPage() {
           currency: balanceRes.data.currency || "EGP",
         });
 
-<<<<<<< HEAD
-        const historyData = historyRes.data.results || historyRes.data || [];
-        setHistory(historyData);
-
-        const pending = historyData.filter(
-          (item) => item.status === "PENDING" || item.status === "PROCESSING",
-=======
         // Ensure history is an array
         const historyData = Array.isArray(historyRes.data)
           ? historyRes.data
@@ -72,8 +65,7 @@ export default function PaymentsPage() {
             item.Status === "PENDING" ||
             item.Status === "PROCESSING" ||
             item.status === "PENDING" ||
-            item.status === "PROCESSING",
->>>>>>> 2347680b7caed42fb1c6f6240057f736e933ebb1
+            item.status === "PROCESSING"
         );
         setPendingBills(pending);
       } catch (error) {
@@ -196,44 +188,26 @@ export default function PaymentsPage() {
                 pendingBills.map((bill) => (
                   <div
                     key={bill.Payment_Id || bill.id || Math.random()}
-                    className={`bill-item ${bill.Status === "OVERDUE" || bill.status === "OVERDUE" ? "overdue" : ""}`}
+                    className={`bill-item ${bill.Status === "OVERDUE" || bill.status === "OVERDUE" || bill.status === "overdue" ? "overdue" : ""}`}
                   >
-<<<<<<< HEAD
-                    <strong style={{ color: "#333" }}>
-                      {bill.description || bill.payment_type}
-                    </strong>
-                    {bill.appointment_info && (
-                      <span style={{ fontSize: "0.85rem", color: "var(--color-primary)", marginTop: "2px" }}>
-                        Appointment with Dr. {bill.appointment_info.doctor} on {bill.appointment_info.date}
-                      </span>
-                    )}
-                    <span style={{ fontSize: "0.85rem", color: "#666", marginTop: "4px" }}>
-                      Due: {new Date(bill.created_at).toLocaleDateString()}
-                    </span>
-                  </div>
-                  <div style={{ textAlign: "right" }}>
-                    <strong
-=======
                     <div
->>>>>>> 2347680b7caed42fb1c6f6240057f736e933ebb1
                       style={{
                         display: "flex",
                         flexDirection: "column",
                         gap: "4px",
                       }}
                     >
-<<<<<<< HEAD
-                      {Number(bill.amount).toFixed(2)} {balance.currency}
-                    </strong>
-                    {bill.status === "overdue" && (
-                      <span className="overdue-badge">OVERDUE</span>
-                    )}
-=======
                       <strong style={{ color: "#333" }}>
-                        {bill.Payment_Type || bill.payment_type || "Service"}
+                        {bill.description || bill.Payment_Type || bill.payment_type || "Service"}
                       </strong>
-                      <span style={{ fontSize: "0.85rem", color: "#666" }}>
-                        ID: {bill.Payment_Id || bill.payment_id}
+                      {bill.appointment_info && (
+                        <span style={{ fontSize: "0.85rem", color: "var(--color-primary)", marginTop: "2px" }}>
+                          Appointment with Dr. {bill.appointment_info.doctor} on {bill.appointment_info.date}
+                        </span>
+                      )}
+                      <span style={{ fontSize: "0.85rem", color: "#666", marginTop: "4px" }}>
+                        ID: {bill.Payment_Id || bill.payment_id || bill.id}
+                        {bill.created_at && ` | Due: ${new Date(bill.created_at).toLocaleDateString()}`}
                       </span>
                     </div>
                     <div style={{ textAlign: "right" }}>
@@ -242,20 +216,21 @@ export default function PaymentsPage() {
                           display: "block",
                           color:
                             bill.Status === "OVERDUE" ||
-                            bill.status === "OVERDUE"
+                            bill.status === "OVERDUE" ||
+                            bill.status === "overdue"
                               ? "#dc3545"
                               : "#333",
                         }}
                       >
                         {Number(bill.Amount || bill.amount).toFixed(2)}{" "}
-                        {bill.Currency || bill.currency || "EGP"}
+                        {bill.Currency || bill.currency || balance.currency || "EGP"}
                       </strong>
                       {(bill.Status === "OVERDUE" ||
-                        bill.status === "OVERDUE") && (
+                        bill.status === "OVERDUE" ||
+                        bill.status === "overdue") && (
                         <span className="overdue-badge">OVERDUE</span>
                       )}
                     </div>
->>>>>>> 2347680b7caed42fb1c6f6240057f736e933ebb1
                   </div>
                 ))
               ) : (
@@ -292,57 +267,13 @@ export default function PaymentsPage() {
                   <th style={{ padding: "12px" }}>Amount</th>
                   <th style={{ padding: "12px" }}>Gateway</th>
                   <th style={{ padding: "12px" }}>Status</th>
-                  <th style={{ padding: "12px", textAlign: "right" }}>
-                    Actions
-                  </th>
                 </tr>
               </thead>
               <tbody>
                 {history.length > 0 ? (
-<<<<<<< HEAD
-                  history.map((record) => (
-                    <tr
-                      key={record.id}
-                      style={{ borderBottom: "1px solid #eee" }}
-                    >
-                      <td
-                        style={{
-                          padding: "12px",
-                          fontWeight: "500",
-                          color: "#333",
-                        }}
-                      >
-                        {Number(record.amount).toFixed(2)} {record.currency}
-                      </td>
-                      <td style={{ padding: "12px" }}>
-                        <StatusBadge status={record.gateway_type} />
-                      </td>
-                      <td style={{ padding: "12px" }}>
-                        <StatusBadge status={record.status} />
-                      </td>
-                      <td style={{ padding: "12px", textAlign: "right" }}>
-                        {record.status === "PAID" || record.status === "COMPLETED" ? (
-                          <Button
-                              size="small"
-                              onClick={() =>
-                                navigate(`/payments/receipt/${record.id}`)
-                              }
-                          >
-                            Receipt
-                          </Button>
-                        ) : (
-                          <Button size="small" variant="danger">
-                            Retry
-                          </Button>
-                        )}
-                      </td>
-                    </tr>
-                  ))
-=======
                   history.map((record) => {
                     const status = record.Status || record.status;
-                    const id =
-                      record.Payment_Id || record.payment_id || record.id;
+                    const id = record.Payment_Id || record.payment_id || record.id;
                     return (
                       <tr key={id} style={{ borderBottom: "1px solid #eee" }}>
                         <td
@@ -353,7 +284,7 @@ export default function PaymentsPage() {
                           }}
                         >
                           {Number(record.Amount || record.amount).toFixed(2)}{" "}
-                          {record.Currency || record.currency || "EGP"}
+                          {record.Currency || record.currency || balance.currency || "EGP"}
                         </td>
                         <td style={{ padding: "12px" }}>
                           <StatusBadge
@@ -367,32 +298,13 @@ export default function PaymentsPage() {
                         <td style={{ padding: "12px" }}>
                           <StatusBadge status={status} />
                         </td>
-                        <td style={{ padding: "12px", textAlign: "right" }}>
-                          {status === "COMPLETED" || status === "PAID" ? (
-                            <Button
-                              size="small"
-                              onClick={() =>
-                                navigate(`/payments/receipt/${id}`)
-                              }
-                            >
-                              Receipt
-                            </Button>
-                          ) : (
-                            <span
-                              style={{ color: "#999", fontSize: "0.85rem" }}
-                            >
-                              Pending
-                            </span>
-                          )}
-                        </td>
                       </tr>
                     );
                   })
->>>>>>> 2347680b7caed42fb1c6f6240057f736e933ebb1
                 ) : (
                   <tr>
                     <td
-                      colSpan="4"
+                      colSpan="3"
                       style={{
                         textAlign: "center",
                         padding: "2rem",

@@ -60,7 +60,6 @@ const paymentApi = {
    * @param {number} paymentId
    * @returns {Promise<{ data: { receipt_url: string, ... } }>}
    */
-<<<<<<< HEAD
   getReceipt: (paymentId) =>
     apiClient.get(`/payments/${paymentId}/receipt`),
 
@@ -80,9 +79,6 @@ const paymentApi = {
    */
   markPaymentPaid: (paymentId) =>
     apiClient.post(`/payments/${paymentId}/mark-paid`),
-=======
-  getReceipt: (paymentId) => apiClient.get(`/payments/${paymentId}/receipt`),
->>>>>>> 2347680b7caed42fb1c6f6240057f736e933ebb1
 };
 
 export default paymentApi;

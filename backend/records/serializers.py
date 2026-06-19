@@ -6,11 +6,8 @@ Serializers for medical records and document management.
 
 from rest_framework import serializers
 from .models import MedicalRecord, Document
-<<<<<<< HEAD
 from patients.models import Patient
-=======
 import os
->>>>>>> 2347680b7caed42fb1c6f6240057f736e933ebb1
 
 
 # ──────────────────────────────────────────────────────
@@ -34,11 +31,7 @@ class DocumentSerializer(serializers.ModelSerializer):
             "file_name", "file_path", "file_type", "file_size",
             "created_at",
         ]
-<<<<<<< HEAD
         read_only_fields = ["id", "record", "uploaded_by", "file_name", "file_path", "file_type", "file_size", "created_at"]
-=======
-        read_only_fields = ["id", "record", "uploaded_by", "file_name", "file_size", "created_at"]
->>>>>>> 2347680b7caed42fb1c6f6240057f736e933ebb1
 
     def get_uploaded_by_name(self, obj):
         # TODO (Fadi): Return uploader's full name
@@ -46,7 +39,7 @@ class DocumentSerializer(serializers.ModelSerializer):
         user = obj.uploaded_by
         if user is None:
             return None
-        parts = [user.first_name, user.middle_name, user.last_name]
+        parts = [user.first_name, getattr(user, 'middle_name', ''), user.last_name]
         return " ".join(p for p in parts if p).strip() or user.email
 
     def validate_file_path(self, value):
@@ -61,37 +54,6 @@ class DocumentSerializer(serializers.ModelSerializer):
                 f"Unsupported file type '{ext}'. Allowed: {allowed_extensions}"
             )
         return value
-
-<<<<<<< HEAD
-
-=======
-    def create(self, validated_data):
-        # TODO (Fadi): Auto-set uploaded_by from request.user
-        # TODO (Fadi): Auto-detect file_type from extension
-        # TODO (Fadi): Calculate file_size from uploaded file
-
-        
-        request = self.context["request"]
-        uploaded_file = validated_data["file_path"]
-
-        # Inline extension → FileType mapping (replaces FileType.from_upload())
-        ext = os.path.splitext(uploaded_file.name)[-1].lower()
-        file_type_map = {
-            ".pdf":  Document.FileType.PDF,
-            ".jpg":  Document.FileType.IMAGE,
-            ".jpeg": Document.FileType.IMAGE,
-            ".png":  Document.FileType.IMAGE,
-            ".dcm":  Document.FileType.DICOM,
-            ".csv":  Document.FileType.CSV,
-        }
-
-        validated_data["uploaded_by"] = request.user
-        validated_data["file_size"]   = uploaded_file.size
-        validated_data["file_type"]   = file_type_map.get(ext, Document.FileType.OTHER)
-        validated_data["file_name"]   = validated_data.get("file_name") or os.path.basename(uploaded_file.name)
-
-        return Document.objects.create(**validated_data)
->>>>>>> 2347680b7caed42fb1c6f6240057f736e933ebb1
 
 
 # ──────────────────────────────────────────────────────
@@ -113,19 +75,11 @@ class MedicalRecordListSerializer(serializers.ModelSerializer):
         ]
 
     def get_created_by_name(self, obj):
-<<<<<<< HEAD
-        if not obj.created_by:
-            return ""
-        name = f"{obj.created_by.first_name} {obj.created_by.last_name}".strip()
-        return name or obj.created_by.email
-=======
-        # TODO (Fadi): Return creator's full name
         user = obj.created_by
         if user is None:
             return None
-        parts = [user.first_name, user.middle_name, user.last_name]
+        parts = [user.first_name, getattr(user, 'middle_name', ''), user.last_name]
         return " ".join(p for p in parts if p).strip() or user.email
->>>>>>> 2347680b7caed42fb1c6f6240057f736e933ebb1
 
     def get_document_count(self, obj):
         # TODO (Fadi): Return obj.documents.count()
@@ -154,26 +108,11 @@ class MedicalRecordDetailSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "created_by", "created_at", "updated_at"]
 
     def get_created_by_name(self, obj):
-<<<<<<< HEAD
-        if not obj.created_by:
-            return ""
-        name = f"{obj.created_by.first_name} {obj.created_by.last_name}".strip()
-        return name or obj.created_by.email
-
-
-=======
-        # TODO (Fadi): Return creator's full name
         user = obj.created_by
         if user is None:
             return None
-        parts = [user.first_name, user.middle_name, user.last_name]
+        parts = [user.first_name, getattr(user, 'middle_name', ''), user.last_name]
         return " ".join(p for p in parts if p).strip() or user.email
-
-    def create(self, validated_data):
-        # TODO (Fadi): Auto-set created_by from request.user
-        validated_data['created_by'] = self.context['request'].user
-        return super().create(validated_data)
->>>>>>> 2347680b7caed42fb1c6f6240057f736e933ebb1
 
 
 # ──────────────────────────────────────────────────────

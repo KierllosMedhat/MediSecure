@@ -31,6 +31,9 @@ const appointmentApi = {
 
   updateAppointment: (appointmentId, data) =>
     apiClient.put(`/appointments/${appointmentId}`, data),
+
+  deleteAppointment: (appointmentId) =>
+    apiClient.delete(`/appointments/${appointmentId}`),
 };
 
 export default appointmentApi;

@@ -53,6 +53,7 @@ import ProtectedRoute from "./features/auth/components/ProtectedRoute";
 import PublicRoute from "./features/auth/components/PublicRoute";
 import { useAuth } from "./features/auth/hooks/useAuth";
 import StaffProfile from "./features/staff/pages/StaffProfile";
+import { useTheme } from "./hooks/useTheme";
 
 import "./App.css";
 
@@ -65,6 +66,8 @@ function ProfileRouter() {
 }
 
 function App() {
+  useTheme(); // Initialize theme state globally
+
   return (
     <Routes>
       {/* ========== Landing Page (public) ========== */}

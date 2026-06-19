@@ -12,19 +12,11 @@
  * - [x] Print button (window.print())
  * - [x] Back link to /payments
  */
-<<<<<<< HEAD
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { Card, Button } from '../../../components/ui';
-import './PaymentPages.css';
-import paymentApi from '../../../api/services/paymentService';
-=======
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, Button } from "../../../components/ui";
 import paymentApi from "../../../api/services/paymentService";
 import "./PaymentPages.css";
->>>>>>> 2347680b7caed42fb1c6f6240057f736e933ebb1
 
 export default function PaymentReceipt() {
   const { paymentId } = useParams();
@@ -43,14 +35,9 @@ export default function PaymentReceipt() {
       try {
         const response = await paymentApi.getReceipt(paymentId);
         setReceipt(response.data);
-<<<<<<< HEAD
-      } catch (error) {
-        console.error("Failed to load receipt", error);
-=======
       } catch (err) {
         console.error("Failed to load receipt", err);
         setError("Could not retrieve receipt details. Please try again later.");
->>>>>>> 2347680b7caed42fb1c6f6240057f736e933ebb1
       } finally {
         setIsLoading(false);
       }
@@ -87,7 +74,10 @@ export default function PaymentReceipt() {
   const type = receipt.Payment_Type || receipt.payment_type || "N/A";
   const gateway = receipt.Gateway_Type || receipt.gateway_type || "N/A";
   const status = receipt.Status || receipt.status || "UNKNOWN";
-  const paidAt = receipt.Paid_at || receipt.paid_at || "-";
+  
+  const rawPaidAt = receipt.Paid_at || receipt.paid_at;
+  const paidAt = rawPaidAt ? new Date(rawPaidAt).toLocaleString() : "N/A";
+  
   const receiptUrl = receipt.Receipt_URL || receipt.receipt_url || "#";
 
   return (
@@ -111,25 +101,6 @@ export default function PaymentReceipt() {
         <div className="receipt-details">
           <div className="receipt-row">
             <span>Payment ID:</span>
-<<<<<<< HEAD
-            <strong>{receipt.id}</strong>
-          </div>
-          <div className="receipt-row">
-            <span>Date Paid:</span>
-            <strong>{receipt.paid_at ? new Date(receipt.paid_at).toLocaleString() : 'N/A'}</strong>
-          </div>
-          <div className="receipt-row">
-            <span>Payment Type:</span>
-            <strong>{receipt.payment_type}</strong>
-          </div>
-          <div className="receipt-row">
-            <span>Gateway:</span>
-            <strong>{receipt.gateway_type}</strong>
-          </div>
-          <div className="receipt-row">
-            <span>Status:</span>
-            <strong style={{ color: '#28a745' }}>{receipt.status}</strong>
-=======
             <strong>{id}</strong>
           </div>
           <div className="receipt-row">
@@ -149,18 +120,12 @@ export default function PaymentReceipt() {
             <strong style={{ color: "#28a745", textTransform: "uppercase" }}>
               {status}
             </strong>
->>>>>>> 2347680b7caed42fb1c6f6240057f736e933ebb1
           </div>
 
           <div className="receipt-row total">
             <span>Amount Paid:</span>
-<<<<<<< HEAD
-            <span style={{ color: '#0056b3' }}>
-              {Number(receipt.amount).toFixed(2)} {receipt.currency}
-=======
             <span style={{ color: "#0056b3" }}>
               {Number(amount).toFixed(2)} {currency}
->>>>>>> 2347680b7caed42fb1c6f6240057f736e933ebb1
             </span>
           </div>
         </div>
@@ -180,19 +145,11 @@ export default function PaymentReceipt() {
           >
             Print Receipt
           </Button>
-<<<<<<< HEAD
-          {receipt.receipt_url && (
-            <Button 
-              variant="secondary" 
-              onClick={() => window.open(receipt.receipt_url, '_blank')} 
-              style={{ width: '100%' }}
-=======
           {receiptUrl !== "#" && (
             <Button
               variant="secondary"
               onClick={() => window.open(receiptUrl, "_blank")}
               style={{ width: "100%" }}
->>>>>>> 2347680b7caed42fb1c6f6240057f736e933ebb1
             >
               Download Digital Copy
             </Button>

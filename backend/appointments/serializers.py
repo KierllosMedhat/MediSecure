@@ -2,7 +2,7 @@
 Appointments Serializers — Implemented by Kyrillos
 """
 
-from datetime import timedelta
+from datetime import timedelta, datetime
 
 from django.utils import timezone
 from rest_framework import serializers
@@ -84,9 +84,33 @@ class AppointmentSerializer(serializers.ModelSerializer):
         duration_min = attrs.get("duration_min", 30)
 
         if staff and scheduled_at:
-            end_time = scheduled_at + timedelta(minutes=duration_min)
+            # 1. Enforce working hours
+            local_scheduled = timezone.localtime(scheduled_at)
+            day_of_week = local_scheduled.strftime('%A').lower()
+            
+            working_hours = staff.working_hours or {}
+            day_schedule = working_hours.get(day_of_week, {})
 
-            # Exclude current instance on update
+            if not day_schedule.get("active"):
+                raise serializers.ValidationError(
+                    f"Dr. {staff.user.last_name} does not work on {day_of_week.capitalize()}s."
+                )
+
+            start_str = day_schedule.get("start", "00:00")
+            end_str = day_schedule.get("end", "23:59")
+            
+            working_start_time = datetime.strptime(start_str, "%H:%M").time()
+            working_end_time = datetime.strptime(end_str, "%H:%M").time()
+
+            end_time = scheduled_at + timedelta(minutes=duration_min)
+            local_end = timezone.localtime(end_time)
+
+            if local_scheduled.time() < working_start_time or local_end.time() > working_end_time:
+                raise serializers.ValidationError(
+                    f"Appointment must be strictly within working hours ({start_str} - {end_str})."
+                )
+
+            # 2. Exclude current instance on update
             qs = Appointment.objects.filter(
                 staff=staff,
             ).exclude(

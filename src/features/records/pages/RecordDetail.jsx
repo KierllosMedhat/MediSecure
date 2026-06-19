@@ -1,29 +1,12 @@
-/**
- * Record Detail — renders record content by type.
- * Owner: Fadi
- *
- * ERD refs:
- *   MedicalRecord → Record_type, Title, Description, Created_by (Staff_Id)
- *   Document (child) → Document_Id, Record_Id (FK), file_name, file_path,
- *                       file_type, file_size, Uploaded_by (User_Id)
- *
- * TODO:
- * - Fetch MedicalRecord from recordsApi.getRecordById(patientId, recordId)
- * - Fetch child Documents from recordsApi.getDocumentsByRecord(recordId)
- * - Render differently based on Record_type: DIAGNOSIS, LAB_RESULT, PRESCRIPTION, IMAGING
- * - Show Document list: file_name, file_type, file_size, download button
- * - Download via recordsApi.downloadDocument(documentId) (blob response)
- * - Handle 403 → show "Access Denied / Consent Required" message
- * - Back button to records list
- */
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Button, StatusBadge, DataTable } from '../../../components/ui';
 import './RecordPages.css';
 import recordsApi from '../../../api/services/recordsService';
 import { useState, useEffect, useCallback } from 'react';
 import DragAndDropFileUpload from '../components/DragAndDropFileUpload';
 import DocumentSection from '../components/DocumentSection';
-<<<<<<< HEAD
+import { useAuth } from '../../auth/hooks/useAuth';
+import patientApi from '../../../api/services/patientService';
 
 // dummy data for testing
 const DUMMY_RECORD_101 = {
@@ -104,30 +87,22 @@ const DUMMY_DOCUMENTS_FOR_RECORD_102 = [
 ];
 
 export default function RecordDetail() {
-  const { id: patientId, recordId } = useParams();
-=======
-import {useAuth} from '../../auth/hooks/useAuth';
-import patientApi from '../../../api/services/patientService';
-export default function RecordDetail() {
-  
+  const params = useParams();
   const location = useLocation();
-var {patientId,recordId} = location.state;
-const {user} = useAuth();
->>>>>>> 2347680b7caed42fb1c6f6240057f736e933ebb1
+  const { user } = useAuth();
+  
+  // Use params first, fallback to location.state for backwards compatibility with branch logic
+  const patientId = params.id || location.state?.patientId || "me";
+  const recordId = params.recordId || location.state?.recordId;
+  
   const navigate = useNavigate();
-
-
 
   const [record, setRecord] = useState(null);
   const [recError, setRecError] = useState(null);
   const [documents, setDocuments] = useState([]);
   const [docError, setDocError] = useState(null);
-<<<<<<< HEAD
-  const emptyMessage = "Something went wrong";
-=======
   const [emptyMessage, setEmptyMessage] = useState("Something went wrong");
-  const [isLoading,setIsLoading] = useState(true);
->>>>>>> 2347680b7caed42fb1c6f6240057f736e933ebb1
+  const [isLoading, setIsLoading] = useState(true);
 
   // drag and drop states
   const [file, setFile] = useState(null);
@@ -147,16 +122,14 @@ const {user} = useAuth();
     }
 
     try {
-
-
       const formData = new FormData();
       formData.append("file_path", file);
 
       // date adjustment
       const now = new Date();
-const year = now.getFullYear();
-const month = String(now.getMonth() + 1).padStart(2, "0");
-const day = String(now.getDate()).padStart(2, "0");
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, "0");
+      const day = String(now.getDate()).padStart(2, "0");
 
       const newDocument = {
         // document_id: nextDocID,
@@ -167,7 +140,6 @@ const day = String(now.getDate()).padStart(2, "0");
         file_size: file.size,
         uploaded_By: patientId,
         created_at: `${new Date().toLocaleString()}`
-
       }
 
       //add to documents
@@ -181,38 +153,44 @@ const day = String(now.getDate()).padStart(2, "0");
       console.error(error);
       alert("Upload failed.");
     } finally {
-      
       setFile(null);
     }
-
   }
 
-<<<<<<< HEAD
   const fetchRecord = useCallback(async () => {
     try {
+      setIsLoading(true);
       const response = await recordsApi.getRecordById(patientId, recordId);
       setRecord(response.data);
+      setRecError(null);
     } catch (error) {
       setRecError(error);
+    } finally {
+      setIsLoading(false);
     }
   }, [patientId, recordId]);
 
   useEffect(() => {
     if (Number(recordId) === 101) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setRecord(DUMMY_RECORD_101);
+      setIsLoading(false);
       return;
     } else if (Number(recordId) === 102) {
       setRecord(DUMMY_RECORD_102);
+      setIsLoading(false);
       return;
     }
-    fetchRecord();
+    
+    if (recordId) {
+      fetchRecord();
+    }
   }, [recordId, fetchRecord]);
 
   const fetchDocuments = useCallback(async () => {
     try {
       const response = await recordsApi.getDocumentsByRecord(recordId);
       setDocuments(response.data.results || response.data);
+      setDocError(null);
     } catch (error) {
       setDocError(error);
     }
@@ -220,7 +198,6 @@ const day = String(now.getDate()).padStart(2, "0");
 
   useEffect(() => {
     if (Number(recordId) === 101) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDocuments(DUMMY_DOCUMENTS_FOR_RECORD_101);
       return;
     } else if (Number(recordId) === 102) {
@@ -232,100 +209,15 @@ const day = String(now.getDate()).padStart(2, "0");
       fetchDocuments();
     }
   }, [record, recordId, fetchDocuments]);
-=======
-  const fetchRecord = async (id) => {
-    const response = await recordsApi.getRecordById(patientId, id);
-    console.log(response.data);
-    setRecord(response.data);
-    if(response.data){
-      setRecError(null);
-    }
-  }
-  useEffect(() => {
-
-    // if (Number(recordId) === 101) {
-    //   setRecord(DUMMY_RECORD_101);
-    //   return;
-    // } else if (Number(recordId) === 102) {
-    //   setRecord(DUMMY_RECORD_102);
-    //   return;
-    // }
-
-
-    const initialize = async () => {
-      try {
-          // const userProfile = await patientApi.getProfile();
-          // console.log("userProfile:", userProfile);
-          // const id = userProfile.data.id;
-          // console.log("id:", id);
-          // //setPatientId(id);
-          // patientId=id;
-          await fetchRecord(recordId);  // pass id directly, don't rely on state
-      } catch (error) {
-          console.error("Could not fetch patient:", error);
-          //setPatientId(1);
-          //setRecords(DUMMY_RECORDS_FOR_PATIENT_1);
-      }
-  };
-if((patientId == undefined)||(patientId == null)){
-  initialize();
-}
-    const run = async () => {
-      try {
-        await fetchRecord(recordId);
-      } catch (error) {
-        setRecError(error);
-      }
-    }
-    run();
-  }, []);
-
-  const fetchDocuments = async (recordID) => {
-    const documents = await recordsApi.getDocumentsByRecord(recordID);
-    console.log("fetching documents");
-    
-    setDocuments(documents.data.results);
-    console.log(documents.data.results);
-    if(documents.data.results){
-      console.log(`number of documents ${documents.data.results.length}`);
-      setDocError(null);
-    }
-  }
-
-  useEffect(() => {
-
-    // if (Number(recordId) === 101) {
-    //   setDocuments(DUMMY_DOCUMENTS_FOR_RECORD_101);
-    //   return;
-    // } else if (Number(recordId) === 102) {
-    //   setDocuments(DUMMY_DOCUMENTS_FOR_RECORD_102);
-    //   return;
-    // }
-
-    const run = async () => {
-      try {
-        await fetchDocuments(recordId);
-      } catch (error) {
-        console.log(`Error of documents ${error}`);
-        setDocError(error);
-      }
-    }
-    if(record && recordId) run();
-  }, [recordId,record])
->>>>>>> 2347680b7caed42fb1c6f6240057f736e933ebb1
-
-
 
   const handleDownload = async (document_id, fallbackFileName = 'document') => {
     try {
       const response = await recordsApi.downloadDocument(document_id);
 
-      // response.data is the blob payload from axios (responseType: 'blob')
       const blob = response.data instanceof Blob
         ? response.data
         : new Blob([response.data]);
 
-      // Try to read filename from Content-Disposition header first
       const contentDisposition =
         response.headers?.['content-disposition'] ||
         response.headers?.['Content-Disposition'];
@@ -333,7 +225,6 @@ if((patientId == undefined)||(patientId == null)){
       let fileName = fallbackFileName;
 
       if (contentDisposition) {
-        // Supports: filename="x.pdf" and filename*=UTF-8''x.pdf
         const utf8Match = contentDisposition.match(/filename\*\s*=\s*UTF-8''([^;]+)/i);
         const asciiMatch = contentDisposition.match(/filename\s*=\s*"([^"]+)"|filename\s*=\s*([^;]+)/i);
 
@@ -357,9 +248,6 @@ if((patientId == undefined)||(patientId == null)){
     }
   };
 
-  // record header and data
-  //prepare columns
-
   const columns = [
     { key: 'title', label: 'Title' },
     {
@@ -376,14 +264,12 @@ if((patientId == undefined)||(patientId == null)){
     },
   ]
 
-
-
   if (recError) {
-    return <ErrorFallback errorCode={recError.response.status} onRetry={fetchRecord} patientId={patientId} />;
-
-  } else if (!record) {
+    return <ErrorFallback errorCode={recError.response?.status || 500} onRetry={fetchRecord} patientId={patientId} />;
+  } else if (!record || isLoading) {
     return <p>Loading...</p>
   }
+  
   return (
     <div className="records-page">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
@@ -391,34 +277,13 @@ if((patientId == undefined)||(patientId == null)){
         <Button onClick={() => navigate(`/patients/${patientId || 'me'}/records/${recordId}/edit`)}>Edit Record</Button>
       </div>
 
-      {/* TODO: MedicalRecord header (Title, Created_by, created_at, Record_type badge) */}
-      {/* <Card className="record-header">
-    <span className="col title">Title</span>
-<span className="col type">
-  Record Type
-</span>
-<span className="col created-by">Created By</span>
-<span className="col created-at">
-Created At
-</span>
-    </Card> */}
-      
-
-
-
-      {/* TODO: Description content (type-specific rendering) */}
-
-
       <DataTable columns={columns} data={[record]} emptyMessage={emptyMessage} />
 
-      {/* TODO: Document attachments list with download buttons */}
       <DocumentSection documents={documents} docError={docError} downloadable={true} handleDownload={handleDownload} />
 
-      <DragAndDropFileUpload patientId={patientId} recordId = {recordId} file={file} handleFile={handleFile} onUpload={handleUpload}/>
+      <DragAndDropFileUpload patientId={patientId} recordId={recordId} file={file} handleFile={handleFile} onUpload={handleUpload}/>
 
     </div>
-
-
   );
 }
 
@@ -444,11 +309,9 @@ function ErrorFallback(props) {
         <p className="error-card__message">{description}</p>
         <div className="error-card__actions">
           <button onClick={props.onRetry}>Retry</button>
-          <button onClick={() => navigate(`/patients/${props.patientId}/records`)}>Go Back</button>
+          <button onClick={() => navigate(`/patients/${props.patientId || 'me'}/records`)}>Go Back</button>
         </div>
       </section>
     </div>
   );
 }
-
-

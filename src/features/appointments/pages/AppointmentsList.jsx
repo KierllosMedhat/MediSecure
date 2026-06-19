@@ -17,6 +17,7 @@ import {
   IoAddOutline,
   IoSearchOutline,
   IoCloseCircleOutline,
+  IoTrashOutline,
 } from 'react-icons/io5';
 import './AppointmentPages.css';
 
@@ -111,9 +112,11 @@ export default function AppointmentsList() {
   const [appointments, setAppointments] = useState(DUMMY_APPOINTMENTS);
   const [filtered, setFiltered] = useState(DUMMY_APPOINTMENTS);
 
-  /* Filters */
+  /* Sorting & Filters */
+  const [sortConfig, setSortConfig] = useState({ key: 'scheduled_at', direction: 'desc' });
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [fromDate, setFromDate] = useState('');
+  const [globalSearch, setGlobalSearch] = useState('');
 
   /* Cancel modal */
   const [cancelTarget, setCancelTarget] = useState(null);
@@ -156,6 +159,7 @@ export default function AppointmentsList() {
   const resetFilters = () => {
     setStatusFilter('ALL');
     setFromDate('');
+    setGlobalSearch('');
     setFiltered(appointments);
   };
 
@@ -218,25 +222,66 @@ export default function AppointmentsList() {
     }
   };
 
+  const handleDelete = async (appointmentId) => {
+    if (window.confirm("Are you sure you want to delete this canceled appointment?")) {
+      try {
+        await appointmentApi.deleteAppointment(appointmentId);
+        const updated = appointments.filter((a) => a.id !== appointmentId);
+        setAppointments(updated);
+        
+        // Ensure we update filtered using the previously filtered condition or just reset it
+        setFiltered(updated);
+        setAlert({ type: 'success', message: 'Appointment deleted successfully.' });
+      } catch (err) {
+        setAlert({ type: 'error', message: 'Failed to delete appointment.' });
+      }
+    }
+  };
+
+  const handleSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const sortedData = [...filtered].sort((a, b) => {
+    if (!sortConfig.key) return 0;
+    
+    let keyToUse = sortConfig.key;
+    if (keyToUse === 'appointment_type' && a.type !== undefined) keyToUse = 'type';
+    
+    const aVal = a[keyToUse] || '';
+    const bVal = b[keyToUse] || '';
+    
+    if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+    if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+    return 0;
+  });
+
   /* Table columns */
   const columns = [
-    { key: 'patient_name', label: 'Patient' },
-    { key: 'staff_name', label: 'Staff' },
+    { key: 'patient_name', label: 'Patient', sortable: true },
+    { key: 'staff_name', label: 'Staff', sortable: true },
     {
       key: 'scheduled_at',
       label: 'Date & Time',
+      sortable: true,
       render: (value) => formatDateTime(value),
     },
     {
       key: 'duration_min',
       label: 'Duration',
+      sortable: true,
       render: (value) => `${value} min`,
     },
-    { key: 'appointment_type', label: 'Type' },
-    { key: 'location', label: 'Location' },
+    { key: 'appointment_type', label: 'Type', sortable: true },
+    { key: 'location', label: 'Location', sortable: true },
     {
       key: 'status',
       label: 'Status',
+      sortable: true,
       render: (value) => <StatusBadge status={value} />,
     },
     {
@@ -273,6 +318,7 @@ export default function AppointmentsList() {
       label: '',
       render: (_, row) => {
         const canCancel = !['CANCELLED', 'COMPLETED', 'NO_SHOW'].includes(row.status);
+        const isCancelled = row.status === 'CANCELLED';
         return (
           <div style={{ display: 'flex', gap: '8px' }}>
             {!isPatient && (
@@ -298,6 +344,18 @@ export default function AppointmentsList() {
                 <IoCloseCircleOutline /> Cancel
               </button>
             )}
+            {isCancelled && (
+              <button
+                className="appt-cancel-btn"
+                style={{ color: '#dc3545', borderColor: '#dc3545' }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDelete(row.id);
+                }}
+              >
+                <IoTrashOutline /> Delete
+              </button>
+            )}
           </div>
         );
       },
@@ -312,11 +370,9 @@ export default function AppointmentsList() {
             <h1 className="page-title">Appointments</h1>
             <p className="page-subtitle">View and manage all appointments.</p>
           </div>
-          {!isPatient && (
-            <Button variant="primary" onClick={() => navigate('/appointments/new')}>
-              <IoAddOutline /> New Appointment
-            </Button>
-          )}
+          <Button variant="primary" onClick={() => navigate('/appointments/new')}>
+            <IoAddOutline /> New Appointment
+          </Button>
         </div>
       </div>
 
@@ -355,21 +411,66 @@ export default function AppointmentsList() {
           />
         </div>
 
-        <div className="appt-filter-actions">
+        <div className="appt-filter-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto' }}>
           <Button variant="primary" size="sm" onClick={applyFilters}>
             <IoSearchOutline /> Filter
           </Button>
           <Button variant="ghost" size="sm" onClick={resetFilters}>
             Reset
           </Button>
+          <div style={{ position: 'relative', width: '250px' }}>
+            <IoSearchOutline 
+              style={{
+                position: 'absolute',
+                left: '12px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                color: '#888',
+                fontSize: '1.1rem'
+              }}
+            />
+            <input
+              type="text"
+              placeholder="Search appointments..."
+              value={globalSearch}
+              onChange={(e) => setGlobalSearch(e.target.value)}
+              style={{
+                padding: '8px 12px 8px 36px',
+                borderRadius: '8px',
+                border: '1px solid #e2e8f0',
+                width: '100%',
+                fontSize: '0.95rem',
+                backgroundColor: '#fff',
+                transition: 'all 0.2s ease',
+                outline: 'none',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+              }}
+              onFocus={(e) => {
+                e.target.style.borderColor = 'var(--color-primary, #3b82f6)';
+                e.target.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.15)';
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = '#e2e8f0';
+                e.target.style.boxShadow = '0 1px 2px rgba(0,0,0,0.05)';
+              }}
+            />
+          </div>
         </div>
       </div>
 
       {/* Appointments DataTable */}
       <DataTable
         columns={columns}
-        data={filtered}
+        data={sortedData}
         emptyMessage="No appointments found matching your filters."
+        sortConfig={sortConfig}
+        onSort={handleSort}
+        searchable={true}
+        searchTerm={globalSearch}
+        onSearchChange={setGlobalSearch}
+        hideSearchBar={true}
+        pagination={true}
+        itemsPerPage={5}
       />
 
       {/* Cancel Appointment Modal */}

@@ -7,6 +7,16 @@ Defines the Staff profile linked to User and Hospital.
 from django.db import models
 from django.conf import settings
 
+def default_working_hours():
+    return {
+        "monday": {"active": True, "start": "09:00", "end": "17:00"},
+        "tuesday": {"active": True, "start": "09:00", "end": "17:00"},
+        "wednesday": {"active": True, "start": "09:00", "end": "17:00"},
+        "thursday": {"active": True, "start": "09:00", "end": "17:00"},
+        "friday": {"active": True, "start": "09:00", "end": "17:00"},
+        "saturday": {"active": False, "start": "09:00", "end": "17:00"},
+        "sunday": {"active": False, "start": "09:00", "end": "17:00"},
+    }
 
 class Staff(models.Model):
     """
@@ -48,6 +58,11 @@ class Staff(models.Model):
     address = models.TextField(blank=True, default="")
     is_active = models.BooleanField(default=True)
     hired_at = models.DateField(null=True, blank=True)
+    working_hours = models.JSONField(
+        default=default_working_hours,
+        blank=True,
+        help_text="Doctor's weekly schedule"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

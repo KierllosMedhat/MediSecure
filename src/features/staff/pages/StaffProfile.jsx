@@ -6,6 +6,7 @@ import {
   IoCallOutline,
   IoBusinessOutline,
   IoAlertCircleOutline,
+  IoTimeOutline,
 } from 'react-icons/io5';
 import useStaffProfile from '../hooks/useStaffProfile';
 import '../../patients/pages/PatientPages.css';
@@ -44,6 +45,9 @@ function FormField({ label, id, value, onChange, type = 'text', readOnly, error,
     </div>
   );
 }
+
+/* ---------- Constants ---------- */
+const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
 /* ====================================================================
    Main Profile Component
@@ -268,6 +272,69 @@ export default function StaffProfile() {
             </div>
           </div>
         </section>
+
+        {/* Working Hours (Doctors only) */}
+        {profile?.role === 'DOCTOR' && (
+          <section className="dashboard-card">
+            <div className="dashboard-card__header">
+              <div className="dashboard-card__header-icon-group">
+                <IoTimeOutline className="dashboard-card__header-icon" />
+                <h2 className="dashboard-card__title">Working Hours</h2>
+              </div>
+            </div>
+            <div className="dashboard-card__body profile-form-section">
+              <div className="working-hours-grid" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {DAYS.map(day => {
+                  const dayData = (displayData?.working_hours || {})[day] || { active: false, start: '09:00', end: '17:00' };
+                  return (
+                    <div key={day} className="working-hours-row" style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                      <div style={{ width: '120px', textTransform: 'capitalize', fontWeight: '500' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: isEditing ? 'pointer' : 'default' }}>
+                          <input 
+                            type="checkbox" 
+                            checked={dayData.active}
+                            disabled={!isEditing}
+                            onChange={(e) => {
+                              const newHours = { ...(displayData.working_hours || {}) };
+                              newHours[day] = { ...dayData, active: e.target.checked };
+                              handleChange('working_hours', newHours);
+                            }}
+                          />
+                          {day}
+                        </label>
+                      </div>
+                      <input 
+                        type="time" 
+                        value={dayData.start} 
+                        disabled={!isEditing || !dayData.active}
+                        onChange={(e) => {
+                          const newHours = { ...(displayData.working_hours || {}) };
+                          newHours[day] = { ...dayData, start: e.target.value };
+                          handleChange('working_hours', newHours);
+                        }}
+                        className="form-field__input"
+                        style={{ width: '130px' }}
+                      />
+                      <span style={{ color: 'var(--color-text-muted)' }}>to</span>
+                      <input 
+                        type="time" 
+                        value={dayData.end} 
+                        disabled={!isEditing || !dayData.active}
+                        onChange={(e) => {
+                          const newHours = { ...(displayData.working_hours || {}) };
+                          newHours[day] = { ...dayData, end: e.target.value };
+                          handleChange('working_hours', newHours);
+                        }}
+                        className="form-field__input"
+                        style={{ width: '130px' }}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </section>
+        )}
 
       </div>
     </div>

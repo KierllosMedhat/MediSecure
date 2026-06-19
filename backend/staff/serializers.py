@@ -26,7 +26,7 @@ class StaffListSerializer(serializers.ModelSerializer):
         fields = [
             "id", "full_name", "email", "role",
             "hospital", "hospital_name", "department",
-            "license_no", "is_active", "hired_at",
+            "license_no", "is_active", "hired_at", "working_hours"
         ]
 
     def get_full_name(self, obj):
@@ -50,7 +50,7 @@ class StaffDetailSerializer(serializers.ModelSerializer):
             "id", "user", "full_name", "email", "role",
             "hospital", "hospital_name", "department",
             "license_no", "address", "is_active", "hired_at",
-            "upcoming_appointments", "created_at", "updated_at",
+            "upcoming_appointments", "created_at", "updated_at", "working_hours",
         ]
         read_only_fields = ["id", "user", "created_at", "updated_at"]
 
@@ -169,7 +169,7 @@ class StaffProfileSerializer(serializers.ModelSerializer):
         fields = [
             "id", "staff_id", "user_id", "email", "first_name", "middle_name",
             "last_name", "phone_number", "role", "full_name",
-            "department", "license_no", "hospital_name", "address",
+            "department", "license_no", "hospital_name", "address", "working_hours",
         ]
         read_only_fields = ["id", "staff_id", "user_id", "email", "role", "hospital_name", "department", "license_no"]
 

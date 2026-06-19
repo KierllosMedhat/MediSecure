@@ -153,11 +153,13 @@ class AppointmentDetailView(generics.RetrieveUpdateDestroyAPIView):
                 )
 
     def perform_destroy(self, instance):
+        # Hard delete if it's already cancelled
+        if instance.status == Appointment.Status.CANCELLED:
+            instance.delete()
+            return
+
         # Soft-cancel instead of hard delete
-        if instance.status in (
-            Appointment.Status.COMPLETED,
-            Appointment.Status.CANCELLED,
-        ):
+        if instance.status == Appointment.Status.COMPLETED:
             from rest_framework.exceptions import ValidationError
             raise ValidationError(
                 f"Cannot cancel an appointment with status '{instance.status}'."

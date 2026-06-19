@@ -1,17 +1,10 @@
-/**
- * Appointment Form Page (Create / Edit)
- * Owner: Kyrillos
- *
- * ERD refs:
- *   Appointment → Patient_Id, Staff_Id, Scheduled_at, Duration_Min,
- *                  Type, Location, Notes, Status
- */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button, Input } from '../../../components/ui';
 import appointmentApi from '../../../api/services/appointmentService';
 import patientApi from '../../../api/services/patientService';
 import staffApi from '../../../api/services/staffService';
+import hospitalApi from '../../../api/services/hospitalService';
 import paymentApi from '../../../api/services/paymentService';
 import { useAuth } from '../../auth/hooks/useAuth';
 import { IoArrowBackOutline, IoCalendarOutline, IoCardOutline } from 'react-icons/io5';
@@ -26,7 +19,8 @@ const TYPES = [
 const DURATIONS = [15, 30, 45, 60, 90, 120];
 
 const INIT = {
-  patient_id: '', staff_id: '', scheduled_at: '',
+  patient_id: '', hospital_id: '', department: '', staff_id: '',
+  scheduled_date: '', scheduled_time: '',
   duration_min: '30', type: '', location: '', notes: '', status: 'SCHEDULED',
   bill_amount: ''
 };
@@ -46,8 +40,9 @@ export default function AppointmentForm() {
 
   const [patients, setPatients] = useState([]);
   const [staff, setStaff] = useState([]);
+  const [hospitals, setHospitals] = useState([]);
+  const [bookedSlots, setBookedSlots] = useState([]);
   
-  // Billing specific state
   const [billStatus, setBillStatus] = useState(null);
   const [paymentId, setPaymentId] = useState(null);
   const [billingLoading, setBillingLoading] = useState(false);
@@ -55,8 +50,14 @@ export default function AppointmentForm() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const sRes = await staffApi.getStaffList();
-        setStaff(sRes.data.results || sRes.data || []);
+        const [hRes, sRes] = await Promise.all([
+          hospitalApi.getHospitals(),
+          staffApi.getStaffList(),
+        ]);
+        
+        setHospitals(hRes.data.results || hRes.data || []);
+        const staffData = sRes.data.results || sRes.data || [];
+        setStaff(staffData);
         
         if (!isPatient) {
           const pRes = await patientApi.getPatients();
@@ -67,10 +68,17 @@ export default function AppointmentForm() {
           const apptRes = await appointmentApi.getAppointmentById(id);
           const appt = apptRes.data;
           
+          const dtParts = appt.scheduled_at ? appt.scheduled_at.split('T') : ['', ''];
+          const docId = appt.staff.id || appt.staff;
+          const assignedDoc = staffData.find(s => s.id === Number(docId));
+
           setForm({
-            patient_id: appt.patient.id || appt.patient,
-            staff_id: appt.staff.id || appt.staff,
-            scheduled_at: appt.scheduled_at ? appt.scheduled_at.slice(0, 16) : '',
+            patient_id: appt.patient.id || appt.patient || '',
+            hospital_id: assignedDoc?.hospital || '',
+            department: assignedDoc?.department || '',
+            staff_id: docId || '',
+            scheduled_date: dtParts[0],
+            scheduled_time: dtParts[1] ? dtParts[1].slice(0, 5) : '',
             duration_min: appt.duration_min || '30',
             type: appt.appointment_type || '',
             location: appt.location || '',
@@ -84,24 +92,136 @@ export default function AppointmentForm() {
         }
       } catch (err) {
         console.error("Failed to load data", err);
-        setAlert({ type: 'error', message: 'Failed to load appointment data.' });
+        setAlert({ type: 'error', message: 'Failed to load form data.' });
       }
     };
     fetchData();
   }, [id, isEdit]);
 
+  // Fetch booked slots for double-booking prevention
+  useEffect(() => {
+    if (form.staff_id && form.scheduled_date) {
+      appointmentApi.getAppointments({ staff: form.staff_id }).then(res => {
+         const appts = res.data.results || res.data || [];
+         const dayAppts = appts.filter(a => {
+           // Skip current editing appt
+           if (isEdit && Number(a.id) === Number(id)) return false;
+           return a.scheduled_at && a.scheduled_at.startsWith(form.scheduled_date) && !['CANCELLED', 'NO_SHOW'].includes(a.status);
+         });
+         
+         const booked = dayAppts.map(a => {
+            const t = a.scheduled_at.split('T')[1].slice(0, 5);
+            return { start: t, duration: a.duration_min };
+         });
+         setBookedSlots(booked);
+      }).catch(err => console.error(err));
+    } else {
+      setBookedSlots([]);
+    }
+  }, [form.staff_id, form.scheduled_date, id, isEdit]);
+
+  // Derived cascade options
+  const availableDepartments = useMemo(() => {
+    if (!form.hospital_id) return [];
+    const deps = new Set(staff.filter(s => s.hospital === Number(form.hospital_id) && s.role === 'DOCTOR').map(s => s.department));
+    return Array.from(deps).filter(Boolean);
+  }, [form.hospital_id, staff]);
+
+  const availableDoctors = useMemo(() => {
+    if (!form.hospital_id || !form.department) return [];
+    return staff.filter(s => s.hospital === Number(form.hospital_id) && s.department === form.department && s.role === 'DOCTOR');
+  }, [form.hospital_id, form.department, staff]);
+
+  const availableTimeSlots = useMemo(() => {
+    if (!form.staff_id || !form.scheduled_date || !form.duration_min) return [];
+    
+    const selectedDoc = staff.find(s => s.id === Number(form.staff_id));
+    if (!selectedDoc || !selectedDoc.working_hours) return [];
+
+    const dateObj = new Date(`${form.scheduled_date}T00:00:00`);
+    if (isNaN(dateObj.getTime())) return [];
+
+    const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const dayName = days[dateObj.getDay()];
+    const daySchedule = selectedDoc.working_hours[dayName];
+    
+    if (!daySchedule || !daySchedule.active) return [];
+
+    const slots = [];
+    const durMin = Number(form.duration_min);
+    
+    let [currH, currM] = daySchedule.start.split(':').map(Number);
+    const [endH, endM] = daySchedule.end.split(':').map(Number);
+    const endTotalMins = endH * 60 + endM;
+
+    while ((currH * 60 + currM + durMin) <= endTotalMins) {
+      const hh = String(currH).padStart(2, '0');
+      const mm = String(currM).padStart(2, '0');
+      
+      const slotTotalMins = currH * 60 + currM;
+      const slotEndMins = slotTotalMins + durMin;
+      
+      let isOverlap = false;
+      for (const b of bookedSlots) {
+         const [bh, bm] = b.start.split(':').map(Number);
+         const bTotalMins = bh * 60 + bm;
+         const bEndMins = bTotalMins + b.duration;
+         
+         if (slotTotalMins < bEndMins && slotEndMins > bTotalMins) {
+            isOverlap = true;
+            break;
+         }
+      }
+      
+      if (!isOverlap) {
+         slots.push(`${hh}:${mm}`);
+      }
+      
+      currM += durMin;
+      currH += Math.floor(currM / 60);
+      currM %= 60;
+    }
+    
+    return slots;
+  }, [form.staff_id, form.scheduled_date, form.duration_min, staff, bookedSlots]);
+
   const set = (f) => (e) => {
-    setForm((p) => ({ ...p, [f]: e.target.value }));
+    const val = e.target.value;
+    setForm((p) => {
+      const next = { ...p, [f]: val };
+      if (f === 'hospital_id') {
+        next.department = '';
+        next.staff_id = '';
+      }
+      if (f === 'department') {
+        next.staff_id = '';
+      }
+      if (f === 'scheduled_date' || f === 'duration_min') {
+        next.scheduled_time = '';
+      }
+      return next;
+    });
     if (errors[f]) setErrors((p) => ({ ...p, [f]: undefined }));
+    if (f === 'scheduled_date' && errors.scheduled_at) setErrors(p => ({ ...p, scheduled_at: undefined }));
+    if (f === 'scheduled_time' && errors.scheduled_at) setErrors(p => ({ ...p, scheduled_at: undefined }));
   };
 
   const validate = () => {
     const e = {};
     if (!isPatient && !String(form.patient_id).trim()) e.patient_id = 'Patient is required';
+    if (!form.hospital_id) e.hospital_id = 'Hospital is required';
+    if (!form.department) e.department = 'Department is required';
     if (!String(form.staff_id).trim()) e.staff_id = 'Doctor is required';
-    if (!form.scheduled_at) e.scheduled_at = 'Date & time is required';
+    if (!form.scheduled_date) e.scheduled_date = 'Date is required';
+    if (!form.scheduled_time) e.scheduled_time = 'Time is required';
     if (!form.type) e.type = 'Type is required';
     if (!form.location.trim()) e.location = 'Location is required';
+    
+    // Fallback datetime error summary
+    if (!form.scheduled_date || !form.scheduled_time) {
+      e.scheduled_at = 'Complete date and time are required';
+    }
+
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -112,18 +232,27 @@ export default function AppointmentForm() {
     setLoading(true);
     setAlert(null);
     try {
+      const scheduled_at = `${form.scheduled_date}T${form.scheduled_time}:00`;
+      
       const payload = {
         ...form,
         staff: Number(form.staff_id),
         appointment_type: form.type,
-        duration_min: Number(form.duration_min)
+        duration_min: Number(form.duration_min),
+        scheduled_at
       };
+      
       if (!isPatient) {
         payload.patient = Number(form.patient_id);
       }
+      
       delete payload.patient_id;
       delete payload.staff_id;
       delete payload.type;
+      delete payload.hospital_id;
+      delete payload.department;
+      delete payload.scheduled_date;
+      delete payload.scheduled_time;
       
       if (isEdit) {
         await appointmentApi.updateAppointment(id, payload);
@@ -174,6 +303,8 @@ export default function AppointmentForm() {
       setBillingLoading(false);
     }
   };
+
+  const selectedDoctor = staff.find(s => s.id === Number(form.staff_id));
 
   return (
     <div className="appointments-page animate-fade-in">
@@ -227,25 +358,94 @@ export default function AppointmentForm() {
                 </div>
               )}
 
+              {/* Hospital Dropdown */}
+              <div className="input-group">
+                <label htmlFor="appt-hospital" className="input-group__label">Hospital</label>
+                <select id="appt-hospital" className={`appt-form-select ${errors.hospital_id ? 'input-group__field--error' : ''}`} value={form.hospital_id} onChange={set('hospital_id')}>
+                  <option value="">Select a hospital…</option>
+                  {hospitals.map(h => (
+                    <option key={h.id} value={h.id}>{h.name}</option>
+                  ))}
+                </select>
+                {errors.hospital_id && <span className="input-group__error">{errors.hospital_id}</span>}
+              </div>
+
+              {/* Department Dropdown */}
+              <div className="input-group">
+                <label htmlFor="appt-department" className="input-group__label">Department</label>
+                <select id="appt-department" className={`appt-form-select ${errors.department ? 'input-group__field--error' : ''}`} value={form.department} onChange={set('department')} disabled={!form.hospital_id}>
+                  <option value="">Select a department…</option>
+                  {availableDepartments.map(dep => (
+                    <option key={dep} value={dep}>{dep}</option>
+                  ))}
+                </select>
+                {errors.department && <span className="input-group__error">{errors.department}</span>}
+              </div>
+
+              {/* Doctor Dropdown */}
               <div className="input-group input-group--full">
                 <label htmlFor="appt-staff" className="input-group__label">Doctor</label>
-                <select id="appt-staff" className={`appt-form-select ${errors.staff_id ? 'input-group__field--error' : ''}`} value={form.staff_id} onChange={set('staff_id')}>
+                <select id="appt-staff" className={`appt-form-select ${errors.staff_id ? 'input-group__field--error' : ''}`} value={form.staff_id} onChange={set('staff_id')} disabled={!form.department}>
                   <option value="">Select a doctor…</option>
-                  {staff.filter(s => s.role === 'DOCTOR' || s.role === 'doctor').map(s => (
+                  {availableDoctors.map(s => (
                     <option key={s.id} value={s.id}>
                       {s.full_name || s.email || `Doctor #${s.id}`}
                     </option>
                   ))}
                 </select>
                 {errors.staff_id && <span className="input-group__error">{errors.staff_id}</span>}
+                {selectedDoctor?.working_hours && (
+                  <div style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: 'var(--color-text-secondary)', background: 'var(--color-bg-secondary)', padding: '0.5rem', borderRadius: 'var(--radius-sm)' }}>
+                    <strong>Working Hours:</strong>
+                    <ul style={{ margin: '0.25rem 0 0 1rem', padding: 0 }}>
+                      {Object.entries(selectedDoctor.working_hours).filter(([_, h]) => h.active).map(([day, h]) => (
+                        <li key={day} style={{ textTransform: 'capitalize' }}>
+                          {day}: {h.start} - {h.end}
+                        </li>
+                      ))}
+                      {Object.values(selectedDoctor.working_hours).filter(h => h.active).length === 0 && (
+                        <li>No working hours defined.</li>
+                      )}
+                    </ul>
+                  </div>
+                )}
               </div>
-              <Input id="appt-date" label="Date & Time" type="datetime-local" value={form.scheduled_at} onChange={set('scheduled_at')} error={errors.scheduled_at} />
-              <div className="input-group input-group--full">
-                <label htmlFor="appt-dur" className="input-group__label">Duration (minutes)</label>
-                <select id="appt-dur" className="appt-form-select" value={form.duration_min} onChange={set('duration_min')}>
-                  {DURATIONS.map((d) => <option key={d} value={d}>{d} min</option>)}
+
+              {/* Date Input */}
+              <div className="input-group">
+                <Input 
+                  id="appt-date" 
+                  label="Date" 
+                  type="date" 
+                  value={form.scheduled_date} 
+                  onChange={set('scheduled_date')} 
+                  error={errors.scheduled_date} 
+                />
+              </div>
+
+              {/* Timeslot Dropdown */}
+              <div className="input-group">
+                <label htmlFor="appt-time" className="input-group__label">Time Slot</label>
+                <select 
+                  id="appt-time" 
+                  className={`appt-form-select ${errors.scheduled_time ? 'input-group__field--error' : ''}`} 
+                  value={form.scheduled_time} 
+                  onChange={set('scheduled_time')}
+                  disabled={!form.scheduled_date || !form.staff_id || availableTimeSlots.length === 0}
+                >
+                  <option value="">Select a time…</option>
+                  {availableTimeSlots.map(time => (
+                    <option key={time} value={time}>{time}</option>
+                  ))}
                 </select>
+                {errors.scheduled_time && <span className="input-group__error">{errors.scheduled_time}</span>}
+                {form.scheduled_date && form.staff_id && availableTimeSlots.length === 0 && (
+                  <span className="input-group__error" style={{ color: 'var(--color-warning)' }}>
+                    No available timeslots on this date.
+                  </span>
+                )}
               </div>
+
               <div className="input-group input-group--full">
                 <label htmlFor="appt-type" className="input-group__label">Appointment Type</label>
                 <select id="appt-type" className={`appt-form-select ${errors.type ? 'input-group__field--error' : ''}`} value={form.type} onChange={set('type')}>

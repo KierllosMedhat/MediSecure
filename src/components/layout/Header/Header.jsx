@@ -1,20 +1,54 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, NavLink } from 'react-router-dom';
 import { useAuth } from '../../../features/auth/hooks/useAuth';
-import { IoNotificationsOutline, IoSearchOutline, IoPersonOutline, IoLockClosedOutline, IoLogOutOutline } from 'react-icons/io5';
+import { 
+  IoNotificationsOutline, IoPersonOutline, IoLockClosedOutline, IoLogOutOutline,
+  IoHomeOutline, IoDocumentTextOutline, IoShieldCheckmarkOutline, 
+  IoCardOutline, IoCalendarOutline, IoPeopleOutline, IoListOutline,
+  IoMenuOutline, IoCloseOutline, IoMoonOutline, IoSunnyOutline
+} from 'react-icons/io5';
+import { useTheme } from '../../../hooks/useTheme';
 import notificationApi from '../../../api/services/notificationService';
 import './Header.css';
+
+const PATIENT_LINKS = [
+  { to: '/dashboard', label: 'Dashboard', icon: <IoHomeOutline /> },
+  { to: '/profile', label: 'My Profile', icon: <IoPersonOutline /> },
+  { to: '/patients/me/records', label: 'Health Records', icon: <IoDocumentTextOutline /> },
+  { to: '/patients/me/consents', label: 'Consent', icon: <IoShieldCheckmarkOutline /> },
+  { to: '/payments', label: 'Payments', icon: <IoCardOutline /> },
+  { to: '/appointments', label: 'Appointments', icon: <IoCalendarOutline /> },
+];
+
+const STAFF_LINKS = [
+  { to: '/staff/dashboard', label: 'Dashboard', icon: <IoHomeOutline /> },
+  { to: '/profile', label: 'My Profile', icon: <IoPersonOutline /> },
+  { to: '/staff/patients', label: 'Patient Records', icon: <IoDocumentTextOutline /> },
+  { to: '/appointments', label: 'Appointments', icon: <IoCalendarOutline /> },
+];
+
+const ADMIN_LINKS = [
+  { to: '/staff/list', label: 'Staff Management', icon: <IoPeopleOutline /> },
+  { to: '/admin/audit-logs', label: 'Audit Logs', icon: <IoListOutline /> },
+];
 
 export default function Header() {
   const { user, isAuthenticated, logout } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
+
+  const role = user?.role || 'PATIENT';
+  const isAdmin = role === 'ADMIN';
+  const isStaff = ['DOCTOR', 'NURSE', 'BILLING_STAFF', 'ADMIN'].includes(role);
+
+  const links = isStaff ? STAFF_LINKS : PATIENT_LINKS;
 
   useEffect(() => {
     if (!isAuthenticated) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setUnreadCount(0);
       return;
     }
@@ -69,19 +103,66 @@ export default function Header() {
 
   return (
     <header className="header">
-      {/* Search (optional placeholder) */}
-      <div className="header__search">
-        <IoSearchOutline className="header__search-icon" />
-        <input
-          type="text"
-          placeholder="Search..."
-          className="header__search-input"
-          id="global-search"
-        />
+      {/* Mobile Toggle */}
+      <button 
+        className="header__mobile-toggle"
+        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        aria-label="Toggle navigation menu"
+      >
+        {isMobileMenuOpen ? <IoCloseOutline size={28} /> : <IoMenuOutline size={28} />}
+      </button>
+
+      {/* Brand */}
+      <div className="header__brand">
+        <img src="/logo.svg" alt="MediSecure Logo" className="header__brand-img" />
+        <span className="header__brand-text">MediSecure</span>
       </div>
+
+      {/* Navigation */}
+      <nav className={`header__nav ${isMobileMenuOpen ? 'header__nav--mobile-open' : ''}`}>
+        <ul className="header__list">
+          {links.map((link) => (
+            <li key={link.to}>
+              <NavLink
+                to={link.to}
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={({ isActive }) =>
+                  `header__link ${isActive ? 'header__link--active' : ''}`
+                }
+              >
+                <span className="header__link-icon">{link.icon}</span>
+                <span>{link.label}</span>
+              </NavLink>
+            </li>
+          ))}
+          {isAdmin && ADMIN_LINKS.map((link) => (
+            <li key={link.to}>
+              <NavLink
+                to={link.to}
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={({ isActive }) =>
+                  `header__link ${isActive ? 'header__link--active' : ''}`
+                }
+              >
+                <span className="header__link-icon">{link.icon}</span>
+                <span>{link.label}</span>
+              </NavLink>
+            </li>
+          ))}
+        </ul>
+      </nav>
 
       {/* Right actions */}
       <div className="header__actions">
+        {/* Theme Toggle */}
+        <button
+          className="header__icon-btn"
+          aria-label="Toggle Dark Mode"
+          onClick={toggleTheme}
+        >
+          {theme === 'dark' ? <IoSunnyOutline size={20} /> : <IoMoonOutline size={20} />}
+        </button>
+
         <button
           className="header__icon-btn"
           aria-label="Notifications"
